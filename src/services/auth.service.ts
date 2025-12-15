@@ -51,4 +51,9 @@ export async function signupRequest(payload: SignupPayload) {
   };
 }
 
-export default { loginRequest, refreshRequest, logoutRequest, signupRequest };
+export async function getMeRequest() {
+  const res = await api.get('/auth/me');
+  return res.data;
+}
+
+export default { loginRequest, refreshRequest, logoutRequest, signupRequest, getMeRequest };
