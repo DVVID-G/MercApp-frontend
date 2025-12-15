@@ -22,8 +22,8 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(console.error);
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => { /* Ignore stop errors on unmount */ });
       }
     };
   }, []);
@@ -47,7 +47,17 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
         const cameraIdOrConfig = backCamera ? backCamera.id : { facingMode: "environment" };
         
         if (!scannerRef.current) {
-            scannerRef.current = new Html5Qrcode("reader");
+            scannerRef.current = new Html5Qrcode("reader", {
+                formatsToSupport: [ 
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39
+                ],
+                verbose: false
+            });
         }
 
         await scannerRef.current.start(
@@ -55,15 +65,7 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
           {
             fps: 10,
             qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-            formatsToSupport: [ 
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39
-            ]
+            aspectRatio: 1.0
           },
           async (decodedText) => {
             // Success callback
@@ -71,14 +73,18 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
             
             // Stop scanning immediately
             if (scannerRef.current) {
-                await scannerRef.current.stop();
+                try {
+                    await scannerRef.current.stop();
+                } catch (e) {
+                    console.warn("Failed to stop scanner", e);
+                }
                 scannerRef.current = null;
             }
             setIsScanning(false);
             
             handleBarcodeDetected(decodedText);
           },
-          (errorMessage) => {
+          () => {
             // Error callback (ignore for scanning errors)
           }
         );
@@ -112,13 +118,12 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
   const stopScanning = async () => {
       if (scannerRef.current) {
           try {
-            if (scannerRef.current.isScanning) {
-                await scannerRef.current.stop();
-            }
-            scannerRef.current = null;
+            await scannerRef.current.stop();
           } catch (e) {
-              console.error("Failed to stop scanner", e);
+              // Ignore errors if scanner is not running
+              console.warn("Failed to stop scanner", e);
           }
+          scannerRef.current = null;
       }
       setIsScanning(false);
   };

@@ -47,6 +47,7 @@ export default function App() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [currentPurchase, setCurrentPurchase] = useState<Purchase | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [autoStartScanner, setAutoStartScanner] = useState(false);
 
   const isAuthenticated = !!user;
 
@@ -103,6 +104,7 @@ export default function App() {
   const handleCreatePurchase = async (purchase: Purchase) => {
     setPurchases((prev: Purchase[]) => [purchase, ...prev]);
     setCurrentScreen('dashboard');
+    setAutoStartScanner(false);
     // Refresh purchases from backend to get accurate data
     await fetchPurchases();
   };
@@ -110,6 +112,16 @@ export default function App() {
   const handleViewPurchaseDetail = (purchase: Purchase) => {
     setCurrentPurchase(purchase);
     setCurrentScreen('purchase-detail');
+  };
+
+  const handleNavigate = (screen: Screen) => {
+    if (screen === 'scanner' as Screen) {
+      setAutoStartScanner(true);
+      setCurrentScreen('create-purchase');
+    } else {
+      setAutoStartScanner(false);
+      setCurrentScreen(screen);
+    }
   };
 
   const renderScreen = () => {
@@ -133,7 +145,11 @@ export default function App() {
         return (
           <CreatePurchase 
             onSave={handleCreatePurchase}
-            onCancel={() => setCurrentScreen('dashboard')}
+            onCancel={() => {
+              setCurrentScreen('dashboard');
+              setAutoStartScanner(false);
+            }}
+            autoStartScanner={autoStartScanner}
           />
         );
       case 'history':
@@ -167,7 +183,7 @@ export default function App() {
       {isAuthenticated && (
         <BottomNav 
           currentScreen={currentScreen} 
-          onNavigate={setCurrentScreen}
+          onNavigate={handleNavigate}
         />
       )}
     </div>
