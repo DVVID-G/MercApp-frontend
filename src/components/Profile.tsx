@@ -6,10 +6,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getMeRequest } from '../services/auth.service';
 import { getAnalyticsOverview, AnalyticsOverview } from '../services/analytics.service';
 import { toast } from 'sonner';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
 interface ProfileProps {
   onLogout: () => void;
 }
+
+const COLORS = ['#d4af37', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#3498db'];
 
 export function Profile({ onLogout }: ProfileProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -128,6 +131,97 @@ export function Profile({ onLogout }: ProfileProps) {
              )}
           </div>
         </motion.div>
+
+        {/* Advanced Stats */}
+        {!loading && stats && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mb-6 space-y-6"
+          >
+            <h3 className="mb-3">Análisis Detallado</h3>
+
+            {/* Monthly Comparison & Projection */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="p-3">
+                <small className="text-gray-400 text-xs block mb-1">Comparativa Mensual</small>
+                <div className="flex items-end gap-2">
+                  <span className={`text-lg font-bold ${stats.monthlyComparison.percentageChange >= 0 ? 'text-error' : 'text-success'}`}>
+                    {stats.monthlyComparison.percentageChange > 0 ? '+' : ''}{stats.monthlyComparison.percentageChange.toFixed(1)}%
+                  </span>
+                  <span className="text-xs text-gray-500 mb-1">vs mes anterior</span>
+                </div>
+              </Card>
+              <Card className="p-3">
+                <small className="text-gray-400 text-xs block mb-1">Proyección Fin de Mes</small>
+                <p className="text-lg font-bold text-white">${stats.spendingProjection.toLocaleString()}</p>
+              </Card>
+            </div>
+
+            <Card className="p-3">
+              <small className="text-gray-400 text-xs block mb-1">Frecuencia de Compra</small>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-secondary-gold">{stats.purchaseFrequency}</span>
+                <span className="text-sm text-gray-400">días promedio entre compras</span>
+              </div>
+            </Card>
+
+            {/* Spending by Day of Week */}
+            <Card className="p-4">
+              <h4 className="text-sm font-medium text-white mb-4">Gastos por Día</h4>
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.spendingByDayOfWeek}>
+                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#9ca3af' }} interval={0} />
+                    <YAxis hide />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                      itemStyle={{ color: '#fff' }}
+                    />
+                    <Bar dataKey="total" fill="#d4af37" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* Brand Distribution */}
+            <Card className="p-4">
+              <h4 className="text-sm font-medium text-white mb-4">Top Marcas</h4>
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stats.brandDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={70}
+                      paddingAngle={5}
+                      dataKey="total"
+                    >
+                      {stats.brandDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                      itemStyle={{ color: '#fff' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {stats.brandDistribution.slice(0, 4).map((brand, index) => (
+                  <div key={brand.brand} className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span className="text-xs text-gray-400 truncate">{brand.brand}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Menu Items */}
         <motion.div

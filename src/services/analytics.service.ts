@@ -12,10 +12,29 @@ export interface CategoryStat {
   itemsCount: number;
 }
 
+export interface DayOfWeekStat {
+  day: string;
+  total: number;
+}
+
+export interface BrandStat {
+  brand: string;
+  total: number;
+}
+
 export interface AnalyticsOverview {
   range: { from: string; to: string };
   monthly: MonthlyStat[];
   categories: CategoryStat[];
+  spendingByDayOfWeek: DayOfWeekStat[];
+  monthlyComparison: {
+    currentMonthTotal: number;
+    previousMonthTotal: number;
+    percentageChange: number;
+  };
+  purchaseFrequency: number;
+  spendingProjection: number;
+  brandDistribution: BrandStat[];
 }
 
 export async function getAnalyticsOverview(filters?: { from?: string; to?: string }): Promise<AnalyticsOverview> {
