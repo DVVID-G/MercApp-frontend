@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, LogOut, Settings, Bell, Shield, HelpCircle, ChevronRight } from 'lucide-react';
 import { Card } from './Card';
 import { Button } from './Button';
 import { motion, AnimatePresence } from 'motion/react';
+import { getMeRequest } from '../services/auth.service';
+import { getAnalyticsOverview, AnalyticsOverview } from '../services/analytics.service';
+import { toast } from 'sonner';
 
 interface ProfileProps {
   onLogout: () => void;
@@ -10,6 +13,28 @@ interface ProfileProps {
 
 export function Profile({ onLogout }: ProfileProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [stats, setStats] = useState<AnalyticsOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [userData, statsData] = await Promise.all([
+          getMeRequest(),
+          getAnalyticsOverview()
+        ]);
+        setUser(userData);
+        setStats(statsData);
+      } catch (error) {
+        console.error('Failed to load profile data', error);
+        toast.error('Error al cargar datos del perfil');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const menuItems = [
     { icon: Settings, label: 'Configuración', badge: null },
@@ -50,13 +75,22 @@ export function Profile({ onLogout }: ProfileProps) {
                 <User className="w-8 h-8 text-primary-black" />
               </div>
               <div className="flex-1">
-                <h3 className="text-white mb-1">Usuario Demo</h3>
-                <small className="text-gray-400">demo@mercapp.com</small>
-                <div className="mt-2">
-                  <span className="px-3 py-1 bg-secondary-gold/20 border border-secondary-gold/30 rounded-[6px] text-secondary-gold text-xs">
-                    Premium
-                  </span>
-                </div>
+                {loading ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-6 bg-gray-800 rounded w-32"></div>
+                    <div className="h-4 bg-gray-800 rounded w-48"></div>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-white mb-1">{user?.name || 'Usuario'}</h3>
+                    <small className="text-gray-400">{user?.email || 'Sin correo'}</small>
+                    <div className="mt-2">
+                      <span className="px-3 py-1 bg-secondary-gold/20 border border-secondary-gold/30 rounded-[6px] text-secondary-gold text-xs">
+                        Miembro
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </Card>
@@ -69,20 +103,29 @@ export function Profile({ onLogout }: ProfileProps) {
           transition={{ delay: 0.2 }}
           className="mb-6"
         >
-          <h3 className="mb-3">Estadísticas</h3>
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="text-center">
-              <p className="text-2xl text-secondary-gold mb-1">24</p>
-              <small className="text-gray-400">Compras</small>
-            </Card>
-            <Card className="text-center">
-              <p className="text-2xl text-white mb-1">156</p>
-              <small className="text-gray-400">Productos</small>
-            </Card>
-            <Card className="text-center">
-              <p className="text-2xl text-white mb-1">45</p>
-              <small className="text-gray-400">Días</small>
-            </Card>
+          <h3 className="mb-3">Estadísticas (Últimos 6 meses)</h3>
+          <div className="grid grid-cols-2 gap-3">
+             {loading ? (
+               <>
+                 <Card className="h-24 animate-pulse bg-gray-900" />
+                 <Card className="h-24 animate-pulse bg-gray-900" />
+               </>
+             ) : (
+               <>
+                <Card className="text-center p-3">
+                  <p className="text-xl text-secondary-gold mb-1">
+                    ${stats?.monthly[stats.monthly.length - 1]?.total.toLocaleString() || '0'}
+                  </p>
+                  <small className="text-gray-400 text-xs">Gasto este mes</small>
+                </Card>
+                <Card className="text-center p-3">
+                  <p className="text-xl text-white mb-1">
+                    {stats?.categories[0]?.category || '-'}
+                  </p>
+                  <small className="text-gray-400 text-xs">Top Categoría</small>
+                </Card>
+               </>
+             )}
           </div>
         </motion.div>
 
