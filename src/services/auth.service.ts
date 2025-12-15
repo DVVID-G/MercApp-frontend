@@ -8,12 +8,23 @@ type LoginResponse = {
 
 export async function loginRequest(email: string, password: string): Promise<LoginResponse> {
   const res = await api.post('/auth/login', { email, password });
-  return res.data as LoginResponse;
+  // Backend response: { accessToken, refreshToken, name, email }
+  const data = res.data;
+  return {
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    user: data.name || data.email ? { name: data.name, email: data.email } : undefined
+  };
 }
 
 export async function refreshRequest(refreshToken: string) {
   const res = await api.post('/auth/refresh', { refreshToken });
-  return res.data as { accessToken: string; refreshToken?: string };
+  // Backend response: { accessToken, refreshToken }
+  const data = res.data;
+  return {
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken
+  };
 }
 
 export async function logoutRequest(refreshToken: string) {
@@ -31,7 +42,13 @@ export type SignupPayload = {
 export async function signupRequest(payload: SignupPayload) {
   // Send the full payload expected by the backend
   const res = await api.post('/auth/signup', payload);
-  return res.data as LoginResponse | any;
+  // Transform backend response: { token, refreshToken, name, email } -> { accessToken, refreshToken, user }
+  const data = res.data;
+  return {
+    accessToken: data.token,
+    refreshToken: data.refreshToken,
+    user: data.name || data.email ? { name: data.name, email: data.email } : undefined
+  };
 }
 
 export default { loginRequest, refreshRequest, logoutRequest, signupRequest };

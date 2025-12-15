@@ -1,66 +1,284 @@
 import { useState } from 'react';
 import { ArrowLeft, Plus, Trash2, ScanBarcode, Save } from 'lucide-react';
 import { Button } from './Button';
-import { Input } from './Input';
 import { Card } from './Card';
 import { Purchase, Product } from '../App';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
+import { createPurchase } from '../services/purchases.service';
+import { ProductSearchInput } from './ProductSearchInput';
+import { ManualProductForm, type ManualProductFormData } from './ManualProductForm';
+import { PriceUpdateModal } from './PriceUpdateModal';
+import { updateProduct, type Product as CatalogProduct } from '../services/product.service';
+import { BarcodeScanner } from './BarcodeScanner';
 
 interface CreatePurchaseProps {
   onSave: (purchase: Purchase) => void;
   onCancel: () => void;
-  onOpenScanner: () => void;
 }
 
-export function CreatePurchase({ onSave, onCancel, onOpenScanner }: CreatePurchaseProps) {
-  const [products, setProducts] = useState<Product[]>([]);
+interface PurchaseItem extends Product {
+  // Product ya incluye marca y barcode
+}
+
+export function CreatePurchase({ onSave, onCancel }: CreatePurchaseProps) {
+  const [products, setProducts] = useState<PurchaseItem[]>([]);
   const [showAddProduct, setShowAddProduct] = useState(false);
-  const [newProduct, setNewProduct] = useState({
-    name: '',
-    category: '',
-    price: '',
-    quantity: '1'
-  });
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Price update modal state
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [priceModalData, setPriceModalData] = useState<{
+    product: CatalogProduct;
+    newPrice: number;
+    quantity: number;
+  } | null>(null);
 
-  const handleAddProduct = () => {
-    if (!newProduct.name || !newProduct.price) return;
+  const handleScanSuccess = (product: CatalogProduct) => {
+    handleProductSelect(product);
+    setShowScanner(false);
+  };
 
-    const product: Product = {
-      id: Date.now().toString(),
-      name: newProduct.name,
-      category: newProduct.category || 'Sin categoría',
-      price: parseFloat(newProduct.price),
-      quantity: parseInt(newProduct.quantity) || 1
-    };
+  const handleScanNotFound = (barcode: string) => {
+    setScannedBarcode(barcode);
+    setShowScanner(false);
+    setShowManualForm(true);
+    toast.info(`Producto no encontrado. Créalo ahora.`);
+  };
 
-    setProducts([...products, product]);
-    setNewProduct({ name: '', category: '', price: '', quantity: '1' });
+  const handleProductSelect = (catalogProduct: CatalogProduct) => {
+    // Check if product already exists in list
+    const existingProduct = products.find(p => p.id === catalogProduct._id);
+    
+    if (existingProduct) {
+      // Increment quantity
+      setProducts(products.map(p => 
+        p.id === catalogProduct._id 
+          ? { ...p, quantity: p.quantity + 1 }
+          : p
+      ));
+      toast.success(`🔺 Cantidad actualizada`, {
+        description: `${catalogProduct.name} x${existingProduct.quantity + 1}`
+      });
+    } else {
+      // Add new product
+      const newProduct: PurchaseItem = {
+        id: catalogProduct._id,
+        name: catalogProduct.name,
+        marca: catalogProduct.marca,
+        category: catalogProduct.categoria,
+        price: catalogProduct.price,
+        quantity: 1,
+        packageSize: catalogProduct.packageSize,
+        pum: catalogProduct.pum,
+        umd: catalogProduct.umd,
+        barcode: catalogProduct.barcode,
+      };
+      
+      setProducts([...products, newProduct]);
+      toast.success(`✅ ${catalogProduct.name} agregado`, {
+        description: `${catalogProduct.marca} • $${catalogProduct.price.toFixed(2)}`
+      });
+    }
+    
     setShowAddProduct(false);
   };
 
-  const handleRemoveProduct = (id: string) => {
-    setProducts(products.filter(p => p.id !== id));
-  };
-
-  const handleSavePurchase = () => {
-    if (products.length === 0) return;
-
-    const total = products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
-    const itemCount = products.reduce((sum, p) => sum + p.quantity, 0);
-
-    const purchase: Purchase = {
+  const handleManualProductSubmit = (formData: ManualProductFormData) => {
+    const pum = formData.packageSize > 0 ? formData.price / formData.packageSize : undefined;
+    
+    const newProduct: PurchaseItem = {
       id: Date.now().toString(),
-      date: new Date().toISOString(),
-      total,
-      itemCount,
-      products,
-      synced: true
+      name: formData.name,
+      marca: formData.marca,
+      category: formData.categoria,
+      price: formData.price,
+      quantity: 1,
+      packageSize: formData.packageSize,
+      pum,
+      umd: formData.umd,
+      barcode: formData.barcode,
     };
-
-    onSave(purchase);
+    
+    setProducts([...products, newProduct]);
+    setShowManualForm(false);
+    toast.success(`✨ Producto creado: ${formData.name}`, {
+      description: `${formData.marca} • $${formData.price.toFixed(2)}`
+    });
   };
 
-  const total = products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+  const handleNoResults = () => {
+    // When product not found, show manual form
+    setShowAddProduct(false);
+    setShowManualForm(true);
+  };
+
+  const handleRemoveProduct = (id: string) => {
+    const product = products.find(p => p.id === id);
+    setProducts(products.filter((p: Product) => p.id !== id));
+    if (product) {
+      toast.info(`🗑️ ${product.name} eliminado`);
+    }
+  };
+
+  const handleSavePurchase = async () => {
+    if (products.length === 0) return;
+    
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Transform frontend products to backend items format with all required fields
+      const items = products.map((p: PurchaseItem) => ({
+        name: p.name,
+        marca: p.marca,
+        price: p.price,
+        quantity: p.quantity,
+        packageSize: p.packageSize,
+        umd: p.umd,
+        barcode: p.barcode,
+        categoria: p.category,
+      }));
+
+      // Call backend API
+      const response = await createPurchase({ items });
+      
+      // Check for price warnings
+      if (response.priceWarnings && response.priceWarnings.length > 0) {
+        console.log('Price warnings detected:', response.priceWarnings);
+        // Handle price warnings if needed in future versions
+      }
+      
+      // Transform response to frontend Purchase format
+      const purchase: Purchase = {
+        id: response.id,
+        date: response.createdAt,
+        total: response.total,
+        itemCount: products.reduce((sum: number, p: PurchaseItem) => sum + p.quantity, 0),
+        products: products.map(p => ({
+          id: p.id,
+          barcode: p.barcode,
+          name: p.name,
+          marca: p.marca,
+          category: p.category,
+          price: p.price,
+          quantity: p.quantity,
+          packageSize: p.packageSize,
+          pum: p.pum,
+          umd: p.umd,
+        })),
+        synced: true
+      };
+
+      toast.success(`🎉 Compra guardada exitosamente`, {
+        description: `${products.length} productos • Total: $${purchase.total.toFixed(2)}`
+      });
+      onSave(purchase);
+    } catch (err: any) {
+      console.error('Error saving purchase:', err);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0]?.messages?.[0] || 
+                          'Error al guardar la compra. Verifica que todos los campos requeridos estén completos.';
+      setError(errorMessage);
+      toast.error('❌ Error al guardar compra', {
+        description: errorMessage
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUseCatalogPrice = async () => {
+    if (!priceModalData) return;
+    
+    const { product, quantity } = priceModalData;
+    
+    // Add product with catalog price
+    const newProduct: PurchaseItem = {
+      id: product._id,
+      name: product.name,
+      marca: product.marca,
+      category: product.categoria,
+      price: product.price, // Use catalog price
+      quantity,
+      packageSize: product.packageSize,
+      pum: product.pum,
+      umd: product.umd,
+      barcode: product.barcode,
+    };
+    
+    setProducts([...products, newProduct]);
+    setPriceModalOpen(false);
+    setPriceModalData(null);
+  };
+
+  const handleUpdateCatalog = async () => {
+    if (!priceModalData) return;
+    
+    const { product, newPrice, quantity } = priceModalData;
+    
+    try {
+      // Update catalog price
+      await updateProduct(product._id, { price: newPrice });
+      
+      // Add product with new price
+      const newProduct: PurchaseItem = {
+        id: product._id,
+        name: product.name,
+        marca: product.marca,
+        category: product.categoria,
+        price: newPrice, // Use new price
+        quantity,
+        packageSize: product.packageSize,
+        pum: product.packageSize > 0 ? newPrice / product.packageSize : undefined,
+        umd: product.umd,
+        barcode: product.barcode,
+      };
+      
+      setProducts([...products, newProduct]);
+      toast.success(`💾 Precio actualizado en catálogo`, {
+        description: `${product.name} • $${newPrice.toFixed(2)}`
+      });
+      setPriceModalOpen(false);
+      setPriceModalData(null);
+    } catch (err) {
+      console.error('Error updating catalog price:', err);
+      setError('Error al actualizar el precio en el catálogo');
+      toast.error('❌ Error al actualizar precio', {
+        description: 'El producto se agregó pero no se pudo actualizar el catálogo'
+      });
+    }
+  };
+
+  const handleUseNewPriceOnce = async () => {
+    if (!priceModalData) return;
+    
+    const { product, newPrice, quantity } = priceModalData;
+    
+    // Add product with new price (don't update catalog)
+    const newProduct: PurchaseItem = {
+      id: product._id,
+      name: product.name,
+      marca: product.marca,
+      category: product.categoria,
+      price: newPrice, // Use new price
+      quantity,
+      packageSize: product.packageSize,
+      pum: product.packageSize > 0 ? newPrice / product.packageSize : undefined,
+      umd: product.umd,
+      barcode: product.barcode,
+    };
+    
+    setProducts([...products, newProduct]);
+    setPriceModalOpen(false);
+    setPriceModalData(null);
+  };
+
+  const total = products.reduce((sum: number, p: Product) => sum + (p.price * p.quantity), 0);
 
   return (
     <div className="min-h-screen pb-24">
@@ -88,7 +306,7 @@ export function CreatePurchase({ onSave, onCancel, onOpenScanner }: CreatePurcha
             Agregar
           </Button>
           <Button 
-            onClick={onOpenScanner} 
+            onClick={() => setShowScanner(true)} 
             variant="secondary"
             icon={ScanBarcode}
           >
@@ -109,7 +327,7 @@ export function CreatePurchase({ onSave, onCancel, onOpenScanner }: CreatePurcha
           ) : (
             <div className="space-y-3">
               <AnimatePresence>
-                {products.map((product, index) => (
+                {products.map((product: Product, index: number) => (
                   <motion.div
                     key={product.id}
                     initial={{ opacity: 0, x: -20 }}
@@ -121,7 +339,7 @@ export function CreatePurchase({ onSave, onCancel, onOpenScanner }: CreatePurcha
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <p className="text-white mb-1">{product.name}</p>
-                          <small className="text-gray-400">{product.category}</small>
+                          <small className="text-gray-400">{product.marca} • {product.category}</small>
                           <div className="flex items-center gap-2 mt-2">
                             <span className="px-2 py-1 bg-gray-800 rounded-[6px] text-xs">
                               x{product.quantity}
@@ -129,6 +347,11 @@ export function CreatePurchase({ onSave, onCancel, onOpenScanner }: CreatePurcha
                             <span className="text-secondary-gold">
                               ${(product.price * product.quantity).toFixed(2)}
                             </span>
+                            {product.pum && product.umd && (
+                              <span className="px-2 py-1 bg-primary-gold/10 rounded-[6px] text-xs text-primary-gold">
+                                ${product.pum.toFixed(2)}/{product.umd}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <button
@@ -145,6 +368,13 @@ export function CreatePurchase({ onSave, onCancel, onOpenScanner }: CreatePurcha
             </div>
           )}
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <Card className="mb-4 bg-error/10 border-error/20">
+            <p className="text-error text-sm">{error}</p>
+          </Card>
+        )}
 
         {/* Total & Save */}
         {products.length > 0 && (
@@ -166,14 +396,15 @@ export function CreatePurchase({ onSave, onCancel, onOpenScanner }: CreatePurcha
               variant="primary"
               icon={Save}
               fullWidth
+              disabled={isLoading}
             >
-              Guardar compra
+              {isLoading ? 'Guardando...' : 'Guardar compra'}
             </Button>
           </motion.div>
         )}
       </div>
 
-      {/* Add Product Modal */}
+      {/* Product Search Modal */}
       <AnimatePresence>
         {showAddProduct && (
           <>
@@ -188,61 +419,107 @@ export function CreatePurchase({ onSave, onCancel, onOpenScanner }: CreatePurcha
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25 }}
-              className="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-gray-950 rounded-t-[24px] p-6 z-50"
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-gray-950 border-t-2 border-gray-800 rounded-t-[24px] p-6 z-50"
             >
               <div className="w-12 h-1 bg-gray-800 rounded-full mx-auto mb-6" />
               
-              <h3 className="mb-6">Agregar producto</h3>
+              <h3 className="text-xl font-bold text-white mb-6">Buscar producto</h3>
               
               <div className="space-y-4">
-                <Input
-                  label="Nombre del producto"
-                  value={newProduct.name}
-                  onChange={(val) => setNewProduct({ ...newProduct, name: val })}
-                  placeholder="Ej: Leche entera"
-                  required
+                <ProductSearchInput 
+                  onProductSelect={handleProductSelect}
+                  onNoResults={handleNoResults}
+                  autoFocus
                 />
                 
-                <Input
-                  label="Categoría"
-                  value={newProduct.category}
-                  onChange={(val) => setNewProduct({ ...newProduct, category: val })}
-                  placeholder="Ej: Lácteos"
-                />
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Precio"
-                    type="number"
-                    value={newProduct.price}
-                    onChange={(val) => setNewProduct({ ...newProduct, price: val })}
-                    placeholder="0.00"
-                    required
-                  />
-                  
-                  <Input
-                    label="Cantidad"
-                    type="number"
-                    value={newProduct.quantity}
-                    onChange={(val) => setNewProduct({ ...newProduct, quantity: val })}
-                    placeholder="1"
-                  />
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-800" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-gray-950 px-2 text-gray-600">o</span>
+                  </div>
                 </div>
+                
+                <button
+                  onClick={() => {
+                    setShowAddProduct(false);
+                    setShowManualForm(true);
+                  }}
+                  className="w-full py-2.5 text-center text-sm font-medium text-secondary-gold hover:text-yellow-400 transition-colors flex items-center justify-center gap-2"
+                >
+                  ✨ Crear producto manualmente
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
 
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <Button variant="ghost" onClick={() => setShowAddProduct(false)}>
-                    Cancelar
-                  </Button>
-                  <Button variant="primary" onClick={handleAddProduct}>
-                    Agregar
-                  </Button>
-                </div>
+                <Button variant="secondary" onClick={() => setShowAddProduct(false)} fullWidth>
+                  Cancelar
+                </Button>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+
+      {/* Barcode Scanner */}
+      {showScanner && (
+        <BarcodeScanner 
+          onProductFound={handleScanSuccess}
+          onProductNotFound={handleScanNotFound}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+
+      {/* Manual Product Form Modal */}
+      <AnimatePresence>
+        {showManualForm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowManualForm(false)}
+              className="fixed inset-0 bg-black/60 z-40"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25 }}
+              className="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-gray-950 rounded-t-[24px] p-6 z-50 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="w-12 h-1 bg-gray-800 rounded-full mx-auto mb-6" />
+              
+              <ManualProductForm
+                onSubmit={handleManualProductSubmit}
+                onCancel={() => setShowManualForm(false)}
+                isLoading={isLoading}
+                initialData={{ barcode: scannedBarcode }}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Price Update Modal */}
+      {priceModalData && (
+        <PriceUpdateModal
+          isOpen={priceModalOpen}
+          productName={priceModalData.product.name}
+          catalogPrice={priceModalData.product.price}
+          newPrice={priceModalData.newPrice}
+          onUseCatalogPrice={handleUseCatalogPrice}
+          onUpdateCatalog={handleUpdateCatalog}
+          onUseNewPriceOnce={handleUseNewPriceOnce}
+          onClose={() => {
+            setPriceModalOpen(false);
+            setPriceModalData(null);
+          }}
+        />
+      )}
     </div>
   );
 }

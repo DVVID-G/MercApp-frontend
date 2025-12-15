@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { Dashboard } from './components/Dashboard';
 import { CreatePurchase } from './components/CreatePurchase';
 import { PurchaseHistory } from './components/PurchaseHistory';
 import { PurchaseDetail } from './components/PurchaseDetail';
-import { BarcodeScanner } from './components/BarcodeScanner';
 import { Profile } from './components/Profile';
 import { BottomNav } from './components/BottomNav';
+import { useAuth } from './context/AuthContext';
+import { getPurchases } from './services/purchases.service';
 
 export type Screen = 
   | 'login' 
@@ -16,16 +17,19 @@ export type Screen =
   | 'create-purchase' 
   | 'history' 
   | 'purchase-detail'
-  | 'scanner'
   | 'profile';
 
 export interface Product {
   id: string;
-  barcode?: string;
+  barcode: string;
   name: string;
+  marca: string;
   category: string;
   price: number;
   quantity: number;
+  packageSize: number;
+  pum?: number;
+  umd: string;
 }
 
 export interface Purchase {
@@ -38,42 +42,74 @@ export interface Purchase {
 }
 
 export default function App() {
+  const { user, logout } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [currentPurchase, setCurrentPurchase] = useState<Purchase | null>(null);
   const [isOffline, setIsOffline] = useState(false);
 
+  const isAuthenticated = !!user;
+
+  // Fetch purchases when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchPurchases();
+    }
+  }, [isAuthenticated]);
+
+  const fetchPurchases = async () => {
+    try {
+      const response = await getPurchases();
+      // Transform backend response to frontend Purchase format
+      if (response.data) {
+        const transformedPurchases: Purchase[] = response.data.map((p: any) => ({
+          id: p._id,
+          date: p.createdAt,
+          total: p.total,
+          itemCount: p.items?.length || 0,
+          products: p.items?.map((item: any) => ({
+            id: item.productId || item._id || Math.random().toString(),
+            name: item.name,
+            category: item.umd || 'Sin categoría',
+            price: item.price,
+            quantity: item.quantity,
+            barcode: item.barcode
+          })) || [],
+          synced: true
+        }));
+        setPurchases(transformedPurchases);
+      }
+    } catch (error) {
+      console.error('Error fetching purchases:', error);
+      setIsOffline(true);
+    }
+  };
+
   const handleLogin = () => {
-    setIsAuthenticated(true);
     setCurrentScreen('dashboard');
   };
 
   const handleRegister = () => {
-    setIsAuthenticated(true);
     setCurrentScreen('dashboard');
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
+    await logout();
     setCurrentScreen('login');
     setPurchases([]);
     setCurrentPurchase(null);
   };
 
-  const handleCreatePurchase = (purchase: Purchase) => {
-    setPurchases(prev => [purchase, ...prev]);
+  const handleCreatePurchase = async (purchase: Purchase) => {
+    setPurchases((prev: Purchase[]) => [purchase, ...prev]);
     setCurrentScreen('dashboard');
+    // Refresh purchases from backend to get accurate data
+    await fetchPurchases();
   };
 
   const handleViewPurchaseDetail = (purchase: Purchase) => {
     setCurrentPurchase(purchase);
     setCurrentScreen('purchase-detail');
-  };
-
-  const handleAddProductFromScanner = (product: Product) => {
-    // This would be used when creating a purchase
-    setCurrentScreen('create-purchase');
   };
 
   const renderScreen = () => {
@@ -98,7 +134,6 @@ export default function App() {
           <CreatePurchase 
             onSave={handleCreatePurchase}
             onCancel={() => setCurrentScreen('dashboard')}
-            onOpenScanner={() => setCurrentScreen('scanner')}
           />
         );
       case 'history':
@@ -113,13 +148,6 @@ export default function App() {
           <PurchaseDetail 
             purchase={currentPurchase}
             onBack={() => setCurrentScreen('history')}
-          />
-        );
-      case 'scanner':
-        return (
-          <BarcodeScanner 
-            onProductScanned={handleAddProductFromScanner}
-            onClose={() => setCurrentScreen('create-purchase')}
           />
         );
       case 'profile':

@@ -145,6 +145,11 @@ export function PurchaseDetail({ purchase, onBack }: PurchaseDetailProps) {
                             ${product.price.toFixed(2)} c/u
                           </span>
                         </div>
+                        {product.pum && product.umd && (
+                          <span className="px-2 py-1 bg-primary-gold/10 rounded-[6px] text-xs text-primary-gold">
+                            ${product.pum.toFixed(2)}/{product.umd}
+                          </span>
+                        )}
                       </div>
                     </div>
                     

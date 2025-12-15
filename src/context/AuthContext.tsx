@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAuthToken(parsed.accessToken);
         }
         if (parsed?.refreshToken) setRefreshToken(parsed.refreshToken);
+        if (parsed?.user) setUser(parsed.user);
       } catch (e) {
         // ignore
       }
@@ -69,19 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken]);
 
-  useEffect(() => {
-    // Try to fetch current user if we have a token
-    if (accessToken) {
-      (async () => {
-        try {
-          const res = await api.get('/auth/me');
-          setUser(res.data);
-        } catch (e) {
-          // ignore
-        }
-      })();
-    }
-  }, [accessToken]);
+  // User data comes from login/signup response, no need to fetch separately
 
   const handleLogin = async (email: string, password: string) => {
     const data = await authService.loginRequest(email, password);
@@ -91,14 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRefreshToken(r);
     setAuthToken(a);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken: a, refreshToken: r }));
-    if (data.user) setUser(data.user);
-    else {
-      try {
-        const res = await api.get('/auth/me');
-        setUser(res.data);
-      } catch (e) {
-        // ignore
-      }
+    if (data.user) {
+      setUser(data.user);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken: a, refreshToken: r, user: data.user }));
     }
   };
 
@@ -111,15 +95,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAccessToken(a);
       setRefreshToken(r || null);
       setAuthToken(a);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken: a, refreshToken: r }));
-      if (data.user) setUser(data.user);
-      else {
-        try {
-          const res = await api.get('/auth/me');
-          setUser(res.data);
-        } catch (e) {
-          // ignore
-        }
+      if (data.user) {
+        setUser(data.user);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken: a, refreshToken: r, user: data.user }));
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken: a, refreshToken: r }));
       }
     } else {
       // If signup did not return tokens, attempt to login with provided credentials
@@ -131,15 +111,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAccessToken(la);
           setRefreshToken(lr || null);
           setAuthToken(la);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken: la, refreshToken: lr }));
-          if (loginData.user) setUser(loginData.user);
-          else {
-            try {
-              const res = await api.get('/auth/me');
-              setUser(res.data);
-            } catch (e) {
-              // ignore
-            }
+          if (loginData.user) {
+            setUser(loginData.user);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken: la, refreshToken: lr, user: loginData.user }));
+          } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken: la, refreshToken: lr }));
           }
         }
       } catch (e) {
