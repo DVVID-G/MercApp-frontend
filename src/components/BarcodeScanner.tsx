@@ -35,15 +35,23 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
     try {
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length) {
-        // Prefer back camera
-        const cameraId = devices[devices.length - 1].id; 
+        // Try to find a back camera explicitly
+        const backCamera = devices.find(device => 
+            device.label.toLowerCase().includes('back') || 
+            device.label.toLowerCase().includes('trasera') ||
+            device.label.toLowerCase().includes('environment')
+        );
+        
+        // Use specific camera ID if found, otherwise fallback to facingMode: environment
+        // Using ID is often more reliable than facingMode on some devices
+        const cameraIdOrConfig = backCamera ? backCamera.id : { facingMode: "environment" };
         
         if (!scannerRef.current) {
             scannerRef.current = new Html5Qrcode("reader");
         }
 
         await scannerRef.current.start(
-          { facingMode: "environment" }, 
+          cameraIdOrConfig, 
           {
             fps: 10,
             qrbox: { width: 250, height: 250 },
