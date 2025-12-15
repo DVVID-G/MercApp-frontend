@@ -9,7 +9,7 @@ import { createPurchase } from '../services/purchases.service';
 import { ProductSearchInput } from './ProductSearchInput';
 import { ManualProductForm, type ManualProductFormData } from './ManualProductForm';
 import { PriceUpdateModal } from './PriceUpdateModal';
-import { updateProduct, type Product as CatalogProduct } from '../services/product.service';
+import { updateProduct, createProduct, type Product as CatalogProduct } from '../services/product.service';
 import { BarcodeScanner } from './BarcodeScanner';
 
 interface CreatePurchaseProps {
@@ -88,27 +88,47 @@ export function CreatePurchase({ onSave, onCancel }: CreatePurchaseProps) {
     setShowAddProduct(false);
   };
 
-  const handleManualProductSubmit = (formData: ManualProductFormData) => {
-    const pum = formData.packageSize > 0 ? formData.price / formData.packageSize : undefined;
-    
-    const newProduct: PurchaseItem = {
-      id: Date.now().toString(),
-      name: formData.name,
-      marca: formData.marca,
-      category: formData.categoria,
-      price: formData.price,
-      quantity: 1,
-      packageSize: formData.packageSize,
-      pum,
-      umd: formData.umd,
-      barcode: formData.barcode,
-    };
-    
-    setProducts([...products, newProduct]);
-    setShowManualForm(false);
-    toast.success(`✨ Producto creado: ${formData.name}`, {
-      description: `${formData.marca} • $${formData.price.toFixed(2)}`
-    });
+  const handleManualProductSubmit = async (formData: ManualProductFormData) => {
+    setIsLoading(true);
+    try {
+      // Create product in backend catalog first
+      const createdProduct = await createProduct({
+        name: formData.name,
+        marca: formData.marca,
+        price: formData.price,
+        packageSize: formData.packageSize,
+        umd: formData.umd,
+        barcode: formData.barcode,
+        categoria: formData.categoria,
+      });
+
+      // Add to local purchase list using the real backend ID
+      const newProduct: PurchaseItem = {
+        id: createdProduct._id,
+        name: createdProduct.name,
+        marca: createdProduct.marca,
+        category: createdProduct.categoria,
+        price: createdProduct.price,
+        quantity: 1,
+        packageSize: createdProduct.packageSize,
+        pum: createdProduct.pum,
+        umd: createdProduct.umd,
+        barcode: createdProduct.barcode,
+      };
+      
+      setProducts([...products, newProduct]);
+      setShowManualForm(false);
+      toast.success(`✨ Producto creado: ${createdProduct.name}`, {
+        description: `${createdProduct.marca} • $${createdProduct.price.toFixed(2)}`
+      });
+    } catch (err) {
+      console.error('Error creating product:', err);
+      toast.error('❌ Error al crear producto', {
+        description: 'No se pudo guardar en el catálogo'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleNoResults = () => {
