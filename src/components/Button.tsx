@@ -9,6 +9,7 @@ interface ButtonProps {
   fullWidth?: boolean;
   disabled?: boolean;
   type?: 'button' | 'submit';
+  className?: string;
 }
 
 export function Button({ 
@@ -18,7 +19,8 @@ export function Button({
   icon: Icon,
   fullWidth = false,
   disabled = false,
-  type = 'button'
+  type = 'button',
+  className = ''
 }: ButtonProps) {
   const baseStyles = "px-6 py-3 rounded-[12px] flex items-center justify-center gap-2 transition-all duration-200";
   
@@ -35,7 +37,7 @@ export function Button({
       disabled={disabled}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className={`${baseStyles} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`${baseStyles} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
     >
       {Icon && <Icon className="w-5 h-5" />}
       <span>{children}</span>
