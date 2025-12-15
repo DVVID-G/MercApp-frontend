@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, Trash2, ScanBarcode, Save } from 'lucide-react';
 import { Button } from './Button';
 import { Card } from './Card';
@@ -15,21 +15,29 @@ import { BarcodeScanner } from './BarcodeScanner';
 interface CreatePurchaseProps {
   onSave: (purchase: Purchase) => void;
   onCancel: () => void;
+  autoStartScanner?: boolean;
 }
 
 interface PurchaseItem extends Product {
   // Product ya incluye marca y barcode
 }
 
-export function CreatePurchase({ onSave, onCancel }: CreatePurchaseProps) {
+export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: CreatePurchaseProps) {
   const [products, setProducts] = useState<PurchaseItem[]>([]);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
+  const [showScanner, setShowScanner] = useState(autoStartScanner);
   const [scannedBarcode, setScannedBarcode] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Effect to handle autoStartScanner prop changes if it changes after mount
+  useEffect(() => {
+    if (autoStartScanner) {
+      setShowScanner(true);
+    }
+  }, [autoStartScanner]);
+
   // Price update modal state
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [priceModalData, setPriceModalData] = useState<{
