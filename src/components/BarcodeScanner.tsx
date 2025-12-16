@@ -130,7 +130,10 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
   };
 
   return createPortal(
-    <div className="fixed top-0 left-0 right-0 bottom-[80px] max-w-[390px] mx-auto bg-black z-50 flex flex-col">
+    <div 
+      className="fixed top-0 left-0 right-0 bottom-[80px] max-w-[390px] mx-auto flex flex-col z-[90]"
+      style={{ backgroundColor: '#000000' }}
+    >
       {/* Header */}
       <div className="bg-gray-950 px-6 pt-12 pb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
