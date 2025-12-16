@@ -4,6 +4,9 @@ import { Input } from './Input';
 import { Button } from './Button';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, type LoginFormData } from '../validators/forms';
 
 interface LoginProps {
   onLogin?: () => void;
@@ -11,23 +14,27 @@ interface LoginProps {
 }
 
 export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
   const auth = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    setServerError(null);
     try {
-      await auth.login(email, password);
+      await auth.login(data.email, data.password);
       if (onLogin) onLogin();
       else {
-        // App manages navigation via onLogin callback; if not provided, remain on current screen.
         console.warn('Login successful but no onLogin callback provided to navigate.');
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Credenciales incorrectas');
+      setServerError(err?.response?.data?.message || 'Credenciales incorrectas');
     }
   };
 
@@ -50,31 +57,29 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
         </div>
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Input
             label="Correo electrónico"
             type="email"
-            value={email}
-            onChange={setEmail}
             placeholder="tu@email.com"
             icon={Mail}
-            required
+            error={errors.email?.message}
+            {...register('email')}
           />
           
           <Input
             label="Contraseña"
             type="password"
-            value={password}
-            onChange={setPassword}
             placeholder="••••••••"
             icon={Lock}
-            required
+            error={errors.password?.message}
+            {...register('password')}
           />
 
-          <Button type="submit" variant="primary" fullWidth>
-            Iniciar sesión
+          <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
+            {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
           </Button>
-          {error && <div className="text-red-500 mt-2" role="alert">{error}</div>}
+          {serverError && <div className="text-red-500 mt-2" role="alert">{serverError}</div>}
         </form>
 
         {/* Divider */}

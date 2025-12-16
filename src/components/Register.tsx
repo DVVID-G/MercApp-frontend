@@ -4,6 +4,9 @@ import { Input } from './Input';
 import { Button } from './Button';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { registerSchema, type RegisterFormData } from '../validators/forms';
 
 interface RegisterProps {
   onRegister: () => void;
@@ -11,33 +14,24 @@ interface RegisterProps {
 }
 
 export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-
+  const [serverError, setServerError] = useState<string | null>(null);
   const auth = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+  });
 
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
+  const onSubmit = async (data: RegisterFormData) => {
+    setServerError(null);
     try {
-      await auth.signup(name, email, password, confirmPassword);
+      await auth.signup(data.name, data.email, data.password, data.confirmPassword);
       onRegister();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al crear la cuenta');
+      setServerError(err?.response?.data?.message || 'Error al crear la cuenta');
     }
   };
 
@@ -60,64 +54,51 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
         </div>
 
         {/* Register Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Input
             label="Nombre completo"
             type="text"
-            value={name}
-            onChange={setName}
             placeholder="Juan Pérez"
             icon={UserIcon}
-            required
+            error={errors.name?.message}
+            {...register('name')}
           />
           
           <Input
             label="Correo electrónico"
             type="email"
-            value={email}
-            onChange={setEmail}
             placeholder="tu@email.com"
             icon={Mail}
-            required
+            error={errors.email?.message}
+            {...register('email')}
           />
           
           <Input
             label="Contraseña"
             type="password"
-            value={password}
-            onChange={setPassword}
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Mínimo 8 caracteres, una mayúscula, un número y un carácter especial"
             icon={Lock}
-            required
+            error={errors.password?.message}
+            {...register('password')}
           />
           
           <Input
             label="Confirmar contraseña"
             type="password"
-            value={confirmPassword}
-            onChange={setConfirmPassword}
             placeholder="Repite tu contraseña"
             icon={Lock}
-            error={error}
-            required
+            error={errors.confirmPassword?.message}
+            {...register('confirmPassword')}
           />
 
-          <div className="pt-2">
-            <Button type="submit" variant="primary" fullWidth>
-              Crear cuenta
-            </Button>
-          </div>
+          <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
+            {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
+          </Button>
+          {serverError && <div className="text-red-500 mt-2" role="alert">{serverError}</div>}
         </form>
 
-        {/* Divider */}
-        <div className="flex items-center gap-4 my-6">
-          <div className="flex-1 h-px bg-gray-800" />
-          <span className="text-gray-600">o</span>
-          <div className="flex-1 h-px bg-gray-800" />
-        </div>
-
         {/* Login Link */}
-        <div className="text-center">
+        <div className="text-center mt-6">
           <p className="text-gray-400 mb-2">¿Ya tienes cuenta?</p>
           <Button variant="ghost" onClick={onSwitchToLogin} fullWidth>
             Iniciar sesión

@@ -1,15 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-
-export interface ManualProductFormData {
-  name: string;
-  marca: string;
-  price: number;
-  packageSize: number;
-  umd: string;
-  barcode: string;
-  categoria: string;
-}
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { manualProductSchema, ManualProductFormData } from '../validators/forms';
+import { Input } from './Input';
 
 export interface ManualProductFormProps {
   onSubmit: (data: ManualProductFormData) => void;
@@ -47,9 +41,10 @@ interface CustomSelectProps {
   options: { value: string; label: string }[];
   disabled?: boolean;
   placeholder?: string;
+  error?: string;
 }
 
-function CustomSelect({ value, onChange, options, disabled = false, placeholder }: CustomSelectProps) {
+function CustomSelect({ value, onChange, options, disabled = false, placeholder, error }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +74,9 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder 
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className="w-full px-4 py-2.5 bg-gray-950 text-white border-2 border-gray-800 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold hover:border-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left flex items-center justify-between"
+        className={`w-full px-4 py-2.5 bg-gray-950 text-white border-2 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left flex items-center justify-between ${
+          error ? 'border-error' : 'border-gray-800 hover:border-gray-700'
+        }`}
       >
         <span className="block truncate">
           {selectedOption?.label || placeholder || 'Seleccionar...'}
@@ -127,6 +124,7 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder 
           </motion.div>
         )}
       </AnimatePresence>
+      {error && <p className="mt-1 text-sm text-error">{error}</p>}
     </div>
   );
 }
@@ -137,62 +135,31 @@ export function ManualProductForm({
   isLoading = false,
   initialData = {},
 }: ManualProductFormProps) {
-  const [formData, setFormData] = useState<ManualProductFormData>({
-    name: initialData.name || '',
-    marca: initialData.marca || '',
-    price: initialData.price || 0,
-    packageSize: initialData.packageSize || 0,
-    umd: initialData.umd || 'unidad',
-    barcode: initialData.barcode || '',
-    categoria: initialData.categoria || 'Otros',
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    formState: { errors },
+  } = useForm<ManualProductFormData>({
+    resolver: zodResolver(manualProductSchema),
+    defaultValues: {
+      name: initialData.name || '',
+      marca: initialData.marca || '',
+      price: initialData.price || 0,
+      packageSize: initialData.packageSize || 0,
+      umd: initialData.umd || 'unidad',
+      barcode: initialData.barcode || '',
+      categoria: initialData.categoria || 'Otros',
+    },
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof ManualProductFormData, string>>>({});
+  const price = watch('price');
+  const packageSize = watch('packageSize');
+  const umd = watch('umd');
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof ManualProductFormData, string>> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'El nombre es obligatorio';
-    }
-
-    if (!formData.marca.trim()) {
-      newErrors.marca = 'La marca es obligatoria';
-    }
-
-    if (formData.price <= 0) {
-      newErrors.price = 'El precio debe ser mayor a 0';
-    }
-
-    if (formData.packageSize <= 0) {
-      newErrors.packageSize = 'El tamaño del paquete debe ser mayor a 0';
-    }
-
-    if (!formData.barcode.trim()) {
-      newErrors.barcode = 'El código de barras es obligatorio';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateForm()) {
-      onSubmit(formData);
-    }
-  };
-
-  const handleChange = (field: keyof ManualProductFormData, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error for this field
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const calculatedPUM = formData.price > 0 && formData.packageSize > 0
-    ? (formData.price / formData.packageSize).toFixed(2)
+  const calculatedPUM = price > 0 && packageSize > 0
+    ? (price / packageSize).toFixed(2)
     : '0.00';
 
   return (
@@ -213,89 +180,48 @@ export function ManualProductForm({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Name */}
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-2">
-            Nombre del Producto *
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            className={`w-full px-4 py-2.5 bg-gray-950 text-white border-2 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold transition-colors placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-              errors.name ? 'border-error' : 'border-gray-800'
-            }`}
-            placeholder="Ej: Leche Entera"
-            disabled={isLoading}
-          />
-          {errors.name && <p className="mt-1 text-sm text-error">{errors.name}</p>}
-        </div>
+        <Input
+          label="Nombre del Producto *"
+          placeholder="Ej: Leche Entera"
+          error={errors.name?.message}
+          disabled={isLoading}
+          {...register('name')}
+        />
 
         {/* Marca */}
-        <div>
-          <label htmlFor="marca" className="block text-sm font-medium text-gray-400 mb-2">
-            Marca *
-          </label>
-          <input
-            id="marca"
-            type="text"
-            value={formData.marca}
-            onChange={(e) => handleChange('marca', e.target.value)}
-            className={`w-full px-4 py-2.5 bg-gray-950 text-white border-2 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold transition-colors placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-              errors.marca ? 'border-error' : 'border-gray-800'
-            }`}
-            placeholder="Ej: Alpina"
-            disabled={isLoading}
-          />
-          {errors.marca && <p className="mt-1 text-sm text-error">{errors.marca}</p>}
-        </div>
+        <Input
+          label="Marca *"
+          placeholder="Ej: Alpina"
+          error={errors.marca?.message}
+          disabled={isLoading}
+          {...register('marca')}
+        />
 
         {/* Price and Package Size Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Price */}
-          <div>
-            <label htmlFor="price" className="block text-sm font-medium text-gray-400 mb-2">
-              Precio *
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none"></span>
-              <input
-                id="price"
-                type="number"
-                step="0.01"
-                value={formData.price || ''}
-                onChange={(e) => handleChange('price', parseFloat(e.target.value) || 0)}
-                className={`w-full pl-10 pr-4 py-2.5 bg-gray-950 text-white border-2 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold transition-colors placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  errors.price ? 'border-error' : 'border-gray-800'
-                }`}
-                placeholder="0.00"
-                disabled={isLoading}
-              />
-            </div>
-            {errors.price && <p className="mt-1 text-sm text-error">{errors.price}</p>}
-          </div>
+          <Input
+            label="Precio *"
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            error={errors.price?.message}
+            disabled={isLoading}
+            {...register('price', { valueAsNumber: true })}
+          />
 
           {/* Package Size */}
-          <div>
-            <label htmlFor="packageSize" className="block text-sm font-medium text-gray-400 mb-2">
-              Tamaño del Paquete *
-            </label>
-            <input
-              id="packageSize"
-              type="number"
-              step="0.01"
-              value={formData.packageSize || ''}
-              onChange={(e) => handleChange('packageSize', parseFloat(e.target.value) || 0)}
-              className={`w-full px-4 py-2.5 bg-gray-950 text-white border-2 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold transition-colors placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-                errors.packageSize ? 'border-error' : 'border-gray-800'
-              }`}
-              placeholder="1.0"
-              disabled={isLoading}
-            />
-            {errors.packageSize && <p className="mt-1 text-sm text-error">{errors.packageSize}</p>}
-          </div>
+          <Input
+            label="Tamaño del Paquete *"
+            type="number"
+            step="0.01"
+            placeholder="1.0"
+            error={errors.packageSize?.message}
+            disabled={isLoading}
+            {...register('packageSize', { valueAsNumber: true })}
+          />
         </div>
 
         {/* UMD */}
@@ -303,21 +229,28 @@ export function ManualProductForm({
           <label className="block text-sm font-medium text-gray-400 mb-2">
             Unidad de Medida *
           </label>
-          <CustomSelect
-            value={formData.umd}
-            onChange={(value) => handleChange('umd', value)}
-            options={UMD_OPTIONS}
-            disabled={isLoading}
-            placeholder="Selecciona unidad"
+          <Controller
+            name="umd"
+            control={control}
+            render={({ field }) => (
+              <CustomSelect
+                value={field.value}
+                onChange={field.onChange}
+                options={UMD_OPTIONS}
+                disabled={isLoading}
+                placeholder="Selecciona unidad"
+                error={errors.umd?.message}
+              />
+            )}
           />
         </div>
 
         {/* PUM Display */}
-        {formData.price > 0 && formData.packageSize > 0 && (
+        {price > 0 && packageSize > 0 && (
           <div className="bg-gradient-to-r from-gray-900 to-gray-950 p-3 rounded-[8px] border-2 border-gray-800">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400 flex items-center gap-1">
-                📊 PUM (Precio por {formData.umd})
+                📊 PUM (Precio por {umd})
               </span>
               <span className="text-lg font-bold text-secondary-gold">
                 ${calculatedPUM}
@@ -327,35 +260,32 @@ export function ManualProductForm({
         )}
 
         {/* Barcode */}
-        <div>
-          <label htmlFor="barcode" className="block text-sm font-medium text-gray-400 mb-2">
-            Código de Barras *
-          </label>
-          <input
-            id="barcode"
-            type="text"
-            value={formData.barcode}
-            onChange={(e) => handleChange('barcode', e.target.value)}
-            className={`w-full px-4 py-2.5 bg-gray-950 text-white border-2 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold transition-colors placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-              errors.barcode ? 'border-error' : 'border-gray-800'
-            }`}
-            placeholder="Ej: 7790001234567"
-            disabled={isLoading}
-          />
-          {errors.barcode && <p className="mt-1 text-sm text-error">{errors.barcode}</p>}
-        </div>
+        <Input
+          label="Código de Barras *"
+          placeholder="Ej: 7790001234567"
+          error={errors.barcode?.message}
+          disabled={isLoading}
+          {...register('barcode')}
+        />
 
         {/* Categoria */}
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-2">
             Categoría *
           </label>
-          <CustomSelect
-            value={formData.categoria}
-            onChange={(value) => handleChange('categoria', value)}
-            options={CATEGORIA_OPTIONS}
-            disabled={isLoading}
-            placeholder="Selecciona una categoría"
+          <Controller
+            name="categoria"
+            control={control}
+            render={({ field }) => (
+              <CustomSelect
+                value={field.value}
+                onChange={field.onChange}
+                options={CATEGORIA_OPTIONS}
+                disabled={isLoading}
+                placeholder="Selecciona una categoría"
+                error={errors.categoria?.message}
+              />
+            )}
           />
         </div>
 
