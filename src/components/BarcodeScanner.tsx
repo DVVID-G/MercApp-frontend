@@ -130,10 +130,7 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
   };
 
   return createPortal(
-    <div 
-      className="fixed top-0 left-0 right-0 bottom-[80px] max-w-[390px] mx-auto flex flex-col z-[90]"
-      style={{ backgroundColor: '#000000' }}
-    >
+    <div className="fixed top-0 left-0 right-0 bottom-[80px] max-w-[390px] mx-auto bg-black z-50 flex flex-col">
       {/* Header */}
       <div className="bg-gray-950 px-6 pt-12 pb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -144,44 +141,46 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 relative">
-        
-        {/* Scanner Container */}
-        <div id="reader" className="w-full max-w-sm overflow-hidden rounded-[24px] border-2 border-gray-800 bg-black"></div>
+      <div className="flex-1 overflow-y-auto w-full">
+        <div className="min-h-full flex flex-col items-center justify-center px-6 py-4 gap-4">
+          
+          {/* Scanner Container */}
+          <div id="reader" className="w-full max-w-sm overflow-hidden rounded-[24px] border-2 border-gray-800 bg-black flex-shrink-0"></div>
 
-        {!isScanning && !error && (
-             <div className="mt-8 w-full max-w-sm">
-                <Button 
-                    onClick={startScanning}
-                    variant="primary"
-                    icon={ScanBarcode}
-                    fullWidth
-                >
-                    Iniciar Cámara
-                </Button>
-             </div>
-        )}
+          {!isScanning && !error && (
+              <div className="w-full max-w-sm flex-shrink-0">
+                  <Button 
+                      onClick={startScanning}
+                      variant="primary"
+                      icon={ScanBarcode}
+                      fullWidth
+                  >
+                      Iniciar Cámara
+                  </Button>
+              </div>
+          )}
 
-        {error && (
-            <div className="mt-4 text-error text-center">
-                <p>{error}</p>
-                <Button onClick={startScanning} variant="secondary" className="mt-4">Reintentar</Button>
-            </div>
-        )}
+          {error && (
+              <div className="text-error text-center flex-shrink-0">
+                  <p>{error}</p>
+                  <Button onClick={startScanning} variant="secondary" className="mt-4">Reintentar</Button>
+              </div>
+          )}
 
-        {isScanning && (
-            <p className="mt-4 text-gray-400 animate-pulse">Buscando código de barras...</p>
-        )}
-        
-        {/* Instructions */}
-        <Card className="mt-8 bg-gray-900/50 border-gray-800 w-full max-w-sm">
-          <h4 className="text-white mb-2 text-sm font-medium">Instrucciones</h4>
-          <ul className="space-y-1 text-gray-400 text-xs">
-            <li>• Mantén el código dentro del cuadro</li>
-            <li>• Asegura buena iluminación</li>
-            <li>• Soporta EAN-13, UPC, Code-128</li>
-          </ul>
-        </Card>
+          {isScanning && (
+              <p className="text-gray-400 animate-pulse flex-shrink-0">Buscando código de barras...</p>
+          )}
+          
+          {/* Instructions */}
+          <Card className="bg-gray-900/50 border-gray-800 w-full max-w-sm flex-shrink-0">
+            <h4 className="text-white mb-2 text-sm font-medium">Instrucciones</h4>
+            <ul className="space-y-1 text-gray-400 text-xs">
+              <li>• Mantén el código dentro del cuadro</li>
+              <li>• Asegura buena iluminación</li>
+              <li>• Soporta EAN-13, UPC, Code-128</li>
+            </ul>
+          </Card>
+        </div>
       </div>
     </div>,
     document.body
