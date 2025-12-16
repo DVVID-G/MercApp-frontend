@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { ArrowLeft, ScanBarcode } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Button } from './Button';
@@ -129,10 +128,10 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
       setIsScanning(false);
   };
 
-  return createPortal(
-    <div className="fixed top-0 left-0 right-0 bottom-[80px] max-w-[390px] mx-auto bg-black z-50 flex flex-col">
+  return (
+    <div className="w-full max-w-[390px] mx-auto flex flex-col">
       {/* Header */}
-      <div className="bg-gray-950 px-6 pt-12 pb-6 flex items-center justify-between">
+      <div className="bg-gray-950 px-6 py-4 flex items-center justify-between border-b border-gray-800 mb-4 rounded-[16px]">
         <div className="flex items-center gap-4">
           <button onClick={() => { stopScanning(); onClose(); }} className="p-2 hover:bg-gray-800 rounded-[8px] transition-colors text-white">
             <ArrowLeft className="w-6 h-6" />
@@ -141,11 +140,11 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto w-full">
-        <div className="min-h-full flex flex-col items-center justify-center px-6 py-4 gap-4">
+      <div className="flex-1 w-full">
+        <div className="flex flex-col items-center justify-center gap-4">
           
           {/* Scanner Container */}
-          <div id="reader" className="w-full max-w-sm overflow-hidden rounded-[24px] border-2 border-gray-800 bg-black flex-shrink-0"></div>
+          <div id="reader" className="w-full max-w-sm overflow-hidden rounded-[24px] border-2 border-gray-800 bg-black flex-shrink-0 min-h-[250px]"></div>
 
           {!isScanning && !error && (
               <div className="w-full max-w-sm flex-shrink-0">
@@ -182,7 +181,6 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
           </Card>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }

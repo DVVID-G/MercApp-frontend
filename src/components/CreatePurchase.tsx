@@ -335,13 +335,31 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
             Agregar
           </Button>
           <Button 
-            onClick={() => setShowScanner(true)} 
-            variant="secondary"
+            onClick={() => setShowScanner(!showScanner)} 
+            variant={showScanner ? "primary" : "secondary"}
             icon={ScanBarcode}
           >
-            Escanear
+            {showScanner ? "Cerrar" : "Escanear"}
           </Button>
         </div>
+
+        {/* Embedded Scanner */}
+        <AnimatePresence>
+          {showScanner && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-6"
+            >
+              <BarcodeScanner 
+                onProductFound={handleScanSuccess}
+                onProductNotFound={handleScanNotFound}
+                onClose={() => setShowScanner(false)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Products List */}
         <div className="mb-6">
@@ -493,14 +511,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
         )}
       </AnimatePresence>
 
-      {/* Barcode Scanner */}
-      {showScanner && (
-        <BarcodeScanner 
-          onProductFound={handleScanSuccess}
-          onProductNotFound={handleScanNotFound}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
+
 
       {/* Manual Product Form Modal */}
       <AnimatePresence>
