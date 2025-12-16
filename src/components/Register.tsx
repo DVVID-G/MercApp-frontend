@@ -76,7 +76,7 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
           <Input
             label="Contraseña"
             type="password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Mínimo 8 caracteres, una mayúscula, un número y un carácter especial"
             icon={Lock}
             error={errors.password?.message}
             {...register('password')}
