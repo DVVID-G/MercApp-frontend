@@ -16,7 +16,7 @@ export function BottomNav({ currentScreen, onNavigate }: BottomNavProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-gray-950 border-t border-gray-800 px-4 py-3 safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-gray-950 border-t border-gray-800 px-4 py-3 safe-area-bottom z-[100]">
       <div className="flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;
