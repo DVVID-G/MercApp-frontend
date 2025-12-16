@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowLeft, ScanBarcode } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Button } from './Button';
@@ -128,7 +129,7 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
       setIsScanning(false);
   };
 
-  return (
+  return createPortal(
     <div className="fixed top-0 left-0 right-0 bottom-[80px] max-w-[390px] mx-auto bg-black z-50 flex flex-col">
       {/* Header */}
       <div className="bg-gray-950 px-6 pt-12 pb-6 flex items-center justify-between">
@@ -179,6 +180,7 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
           </ul>
         </Card>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
