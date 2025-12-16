@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getMeRequest } from '../services/auth.service';
 import { getAnalyticsOverview, AnalyticsOverview } from '../services/analytics.service';
 import { toast } from 'sonner';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface ProfileProps {
   onLogout: () => void;
@@ -110,8 +110,12 @@ export function Profile({ onLogout }: ProfileProps) {
           <div className="grid grid-cols-2 gap-3">
              {loading ? (
                <>
-                 <Card className="h-24 animate-pulse bg-gray-900" />
-                 <Card className="h-24 animate-pulse bg-gray-900" />
+                 <Card className="h-24 animate-pulse bg-gray-900">
+                   <div />
+                 </Card>
+                 <Card className="h-24 animate-pulse bg-gray-900">
+                   <div />
+                 </Card>
                </>
              ) : (
                <>
@@ -200,7 +204,7 @@ export function Profile({ onLogout }: ProfileProps) {
                       paddingAngle={5}
                       dataKey="total"
                     >
-                      {stats.brandDistribution.map((entry, index) => (
+                      {stats.brandDistribution.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>

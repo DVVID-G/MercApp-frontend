@@ -22,8 +22,8 @@ export type RegisterFormData = z.infer<typeof registerSchema>;
 export const manualProductSchema = z.object({
   name: z.string().min(2, 'El nombre es requerido'),
   marca: z.string().min(2, 'La marca es requerida'),
-  price: z.number({ invalid_type_error: 'El precio debe ser un número' }).min(1, 'El precio debe ser mayor a 0'),
-  packageSize: z.number({ invalid_type_error: 'El tamaño debe ser un número' }).min(1, 'El tamaño debe ser mayor a 0'),
+  price: z.number({ message: 'El precio debe ser un número' }).min(1, 'El precio debe ser mayor a 0'),
+  packageSize: z.number({ message: 'El tamaño debe ser un número' }).min(1, 'El tamaño debe ser mayor a 0'),
   umd: z.string().min(1, 'La unidad de medida es requerida'),
   barcode: z.string().min(3, 'El código de barras es requerido'),
   categoria: z.string().min(1, 'La categoría es requerida'),

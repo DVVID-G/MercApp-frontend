@@ -108,11 +108,3 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
     </div>
   );
 }
-          <Button variant="ghost" onClick={onSwitchToLogin} fullWidth>
-            Iniciar sesión
-          </Button>
-        </div>
-      </motion.div>
-    </div>
-  );
-}

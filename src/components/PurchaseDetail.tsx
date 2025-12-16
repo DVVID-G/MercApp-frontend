@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar, Package, DollarSign, Tag } from 'lucide-react';
+import { ArrowLeft, Calendar, Package, Tag } from 'lucide-react';
 import { Card } from './Card';
 import { Purchase } from '../App';
 import { motion } from 'motion/react';

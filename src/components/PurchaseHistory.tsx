@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, ShoppingCart, Calendar, TrendingUp, Filter } from 'lucide-react';
+import { Search, ShoppingCart, Calendar, TrendingUp } from 'lucide-react';
 import { Card } from './Card';
 import { Input } from './Input';
 import { Purchase } from '../App';
@@ -87,7 +87,7 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
           <Input
             label="Buscar"
             value={searchQuery}
-            onChange={setSearchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar por producto..."
             icon={Search}
           />
