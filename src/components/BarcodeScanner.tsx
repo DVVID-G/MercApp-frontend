@@ -129,7 +129,7 @@ export function BarcodeScanner({ onProductFound, onProductNotFound, onClose }: B
   };
 
   return (
-    <div className="fixed inset-0 max-w-[390px] mx-auto bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 max-w-[390px] mx-auto bg-black z-50 flex flex-col pb-20">
       {/* Header */}
       <div className="bg-gray-950 px-6 pt-12 pb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
