@@ -1,26 +1,21 @@
 import { LucideIcon } from 'lucide-react';
+import { forwardRef } from 'react';
 
-interface InputProps {
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
-  type?: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
   icon?: LucideIcon;
   error?: string;
-  required?: boolean;
 }
 
-export function Input({ 
+export const Input = forwardRef<HTMLInputElement, InputProps>(({ 
   label, 
   type = 'text', 
-  value, 
-  onChange, 
-  placeholder,
+  className = '',
   icon: Icon,
   error,
-  required = false
-}: InputProps) {
+  required,
+  ...props
+}, ref) => {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-gray-400 text-sm">
@@ -33,11 +28,10 @@ export function Input({
           </div>
         )}
         <input
+          ref={ref}
           type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className={`w-full bg-gray-950 border ${error ? 'border-error' : 'border-gray-800'} rounded-[8px] px-4 py-3 ${Icon ? 'pl-11' : ''} text-white placeholder:text-gray-600 focus:outline-none focus:border-secondary-gold transition-colors`}
+          className={`w-full bg-gray-950 border ${error ? 'border-error' : 'border-gray-800'} rounded-[8px] px-4 py-3 ${Icon ? 'pl-11' : ''} text-white placeholder:text-gray-600 focus:outline-none focus:border-secondary-gold transition-colors ${className}`}
+          {...props}
         />
       </div>
       {error && (
@@ -45,4 +39,6 @@ export function Input({
       )}
     </div>
   );
-}
+});
+
+Input.displayName = 'Input';
