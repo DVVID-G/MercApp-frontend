@@ -96,3 +96,32 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-secondary-gold);
 }
+
+/* ============================================================================
+   QuaggaJS Scanner Video Containment
+   Ensures the camera video stays within its container bounds
+   ============================================================================ */
+
+#barcode-scanner-container {
+  position: relative;
+}
+
+#barcode-scanner-container video,
+#barcode-scanner-container canvas {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Ensure drawingBuffer canvas (QuaggaJS detection overlay) is on top */
+#barcode-scanner-container canvas.drawingBuffer {
+  z-index: 1;
+}
+
+/* Scanner overlay should be above both video and canvas */
+.scanner-overlay {
+  z-index: 10;
+}

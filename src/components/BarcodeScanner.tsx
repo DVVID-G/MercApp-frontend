@@ -162,37 +162,39 @@ export const BarcodeScanner = memo(function BarcodeScanner({
       {permissionState.status === 'granted' && (
         <>
           {/* Video Container (T084 - Accessibility) */}
-          <Card className="bg-gray-900/50 border-gray-800 p-4 w-full max-w-sm">
+          <Card className="relative bg-gray-900/50 border-gray-800 p-4 w-full max-w-sm">
             <div
               id="barcode-scanner-container"
               ref={videoContainerRef}
-              className="relative w-full h-[300px] bg-black rounded-lg overflow-hidden flex items-center justify-center"
+              className="relative w-full h-[300px] bg-black rounded-lg overflow-hidden"
               role="region"
               aria-label="Vista de cámara para escaneo"
               aria-describedby="scanner-instructions"
             >
               {/* Loading State (T083) */}
               {isInitializing && (
-                <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20" role="status" aria-live="polite">
                   <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   <span className="text-gray-400 text-sm">Iniciando cámara...</span>
                 </div>
               )}
               
               {!isScanning && !error && !isInitializing && (
-                <div className="text-gray-500 text-sm" role="status">Preparando escáner...</div>
+                <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm z-20" role="status">
+                  Preparando escáner...
+                </div>
+              )}
+
+              {/* Overlay INSIDE video container for proper positioning */}
+              {isScanning && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 scanner-overlay">
+                  <ScannerOverlay
+                    state={scannerState}
+                    vibrationEnabled={vibrationEnabled}
+                  />
+                </div>
               )}
             </div>
-
-            {/* Overlay on top of video */}
-            {isScanning && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <ScannerOverlay
-                  state={scannerState}
-                  vibrationEnabled={vibrationEnabled}
-                />
-              </div>
-            )}
           </Card>
 
           {/* Error Recovery UI (T085) */}
