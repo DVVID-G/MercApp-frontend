@@ -16,6 +16,24 @@ import type {
 import { TIER_CONFIGS, BARCODE_READERS } from '../types/scanner.types';
 
 /**
+ * Map QuaggaJS format string to our BarcodeFormat type
+ * QuaggaJS returns formats like 'ean_13', 'upc_a', etc. (lowercase with underscore)
+ * We use 'EAN_13', 'UPC_A', etc. (uppercase with underscore)
+ */
+export function mapQuaggaFormatToBarcodeFormat(quaggaFormat: string): BarcodeFormat | null {
+  const formatMap: Record<string, BarcodeFormat> = {
+    'ean_13': 'EAN_13',
+    'ean_8': 'EAN_8',
+    'upc_a': 'UPC_A',
+    'upc_e': 'UPC_E',
+    'code_128': 'CODE_128',
+    'code_39': 'CODE_39'
+  };
+  
+  return formatMap[quaggaFormat.toLowerCase()] || null;
+}
+
+/**
  * Get QuaggaJS configuration for a specific performance tier
  * @param tier - Device performance tier (low/medium/high)
  * @returns Partial QuaggaJS configuration optimized for the tier

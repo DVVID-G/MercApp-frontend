@@ -28,8 +28,8 @@ describe('PermissionPrompt Component', () => {
       />
     );
     
-    expect(screen.getByText(/cámara/i)).toBeInTheDocument();
-    expect(screen.getByText(/escanear/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /acceso a cámara/i })).toBeInTheDocument();
+    expect(screen.getByText(/escanear códigos de barras/i)).toBeInTheDocument();
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
 
@@ -97,7 +97,7 @@ describe('PermissionPrompt Component', () => {
       />
     );
     
-    expect(screen.getByText(/bloqueado/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /permisos bloqueados/i })).toBeInTheDocument();
     expect(screen.getByText(/Habilitar cámara en iOS/i)).toBeInTheDocument();
     expect(screen.getByText(/Configuración/i)).toBeInTheDocument();
     expect(screen.getByText(/Safari/i)).toBeInTheDocument();
