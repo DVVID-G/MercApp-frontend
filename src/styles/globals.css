@@ -103,7 +103,11 @@
    ============================================================================ */
 
 #barcode-scanner-container {
-  position: relative;
+  position: relative !important;
+  height: 280px !important;
+  min-height: 280px !important;
+  max-height: 280px !important;
+  overflow: hidden !important;
 }
 
 #barcode-scanner-container video,
@@ -113,6 +117,7 @@
   left: 0 !important;
   width: 100% !important;
   height: 100% !important;
+  max-height: 280px !important;
   object-fit: cover !important;
 }
 

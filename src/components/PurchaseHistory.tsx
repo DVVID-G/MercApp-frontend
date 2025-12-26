@@ -151,11 +151,12 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.4 + groupIndex * 0.1 + index * 0.05 }}
+                      className="w-full"
                     >
-                      <Card onClick={() => onViewDetail(purchase)}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
+                      <Card onClick={() => onViewDetail(purchase)} className="w-full">
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <p className="text-white">
                                 {new Date(purchase.date).toLocaleDateString('es-ES', { 
                                   day: 'numeric',
@@ -164,17 +165,17 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
                                 })}
                               </p>
                               {!purchase.synced && (
-                                <span className="px-2 py-0.5 bg-warning/10 border border-warning/30 rounded-[4px] text-warning text-xs">
+                                <span className="px-2 py-0.5 bg-warning/10 border border-warning/30 rounded-[4px] text-warning text-xs flex-shrink-0">
                                   Pendiente
                                 </span>
                               )}
                             </div>
-                            <small className="text-gray-400">
+                            <small className="text-gray-400 block mb-1">
                               {purchase.itemCount} {purchase.itemCount === 1 ? 'producto' : 'productos'}
                             </small>
                             
                             {/* Product preview */}
-                            <div className="mt-2 flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1 mt-1">
                               {purchase.products.slice(0, 3).map(p => (
                                 <span key={p.id} className="px-2 py-1 bg-gray-800 rounded-[4px] text-xs text-gray-400">
                                   {p.name}
@@ -188,8 +189,8 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
                             </div>
                           </div>
                           
-                          <div className="text-right">
-                            <p className="text-secondary-gold text-xl">
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-secondary-gold text-xl whitespace-nowrap">
                               ${purchase.total.toFixed(2)}
                             </p>
                           </div>

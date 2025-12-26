@@ -8,7 +8,7 @@
  * @accessibility WCAG 2.1 AA compliant
  */
 
-import React, { useEffect, useRef, useCallback, useState, memo } from 'react';
+import { useEffect, useRef, useCallback, useState, memo } from 'react';
 import { useBarcodeScannerPermissions } from '../hooks/useBarcodeScannerPermissions';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { PermissionPrompt } from './scanner/PermissionPrompt';
@@ -16,6 +16,7 @@ import { ScannerOverlay } from './scanner/ScannerOverlay';
 import { ScannerInstructions } from './scanner/ScannerInstructions';
 import { Card } from './Card';
 import { Button } from './Button';
+import type { ScannerVisualState } from '../types/scanner.types';
 
 // Development logging
 const isDev = import.meta.env.DEV;
@@ -122,17 +123,23 @@ export const BarcodeScanner = memo(function BarcodeScanner({
     onManualEntry?.();
   }, [stopScanning, onManualEntry]);
 
+  // Map scanner state to visual state (handle error case)
+  const getVisualState = useCallback((): ScannerVisualState => {
+    if (error) return 'error';
+    return scannerState;
+  }, [scannerState, error]);
+
   return (
     <div 
-      className="flex flex-col items-center justify-center min-h-screen bg-gray-950 p-4 gap-6"
+      className="flex flex-col items-center justify-start h-screen bg-gray-950 p-4 gap-4 overflow-y-auto"
       role="main"
       aria-label="Escáner de códigos de barras"
     >
       {/* Header (T084 - Accessibility) */}
-      <div className="w-full max-w-sm flex items-center justify-between">
+      <div className="w-full max-w-sm flex items-center justify-between flex-shrink-0">
         <h2 
           id="scanner-title"
-          className="text-white text-xl font-semibold"
+          className="text-white text-lg font-semibold"
         >
           Escanear Código
         </h2>
@@ -141,7 +148,6 @@ export const BarcodeScanner = memo(function BarcodeScanner({
           variant="secondary"
           className="min-h-[44px] min-w-[44px]"
           aria-label="Cerrar escáner y volver"
-          title="Cerrar"
         >
           ✕
         </Button>
@@ -162,25 +168,30 @@ export const BarcodeScanner = memo(function BarcodeScanner({
       {permissionState.status === 'granted' && (
         <>
           {/* Video Container (T084 - Accessibility) */}
-          <Card className="relative bg-gray-900/50 border-gray-800 p-4 w-full max-w-sm">
+          <Card className="relative bg-gray-900/50 border-gray-800 p-3 w-full max-w-sm flex-shrink-0">
             <div
               id="barcode-scanner-container"
               ref={videoContainerRef}
-              className="relative w-full h-[300px] bg-black rounded-lg overflow-hidden"
+              className="relative w-full h-[280px] bg-black rounded-lg overflow-hidden"
+              style={{ minHeight: '280px', maxHeight: '280px' }}
               role="region"
               aria-label="Vista de cámara para escaneo"
               aria-describedby="scanner-instructions"
             >
               {/* Loading State (T083) */}
               {isInitializing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20" role="status" aria-live="polite">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20" role="status" aria-live="polite" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                   <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   <span className="text-gray-400 text-sm">Iniciando cámara...</span>
                 </div>
               )}
               
               {!isScanning && !error && !isInitializing && (
-                <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm z-20" role="status">
+                <div 
+                  className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm z-20" 
+                  role="status"
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, height: '100%' }}
+                >
                   Preparando escáner...
                 </div>
               )}
@@ -189,7 +200,7 @@ export const BarcodeScanner = memo(function BarcodeScanner({
               {isScanning && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 scanner-overlay">
                   <ScannerOverlay
-                    state={scannerState}
+                    state={getVisualState()}
                     vibrationEnabled={vibrationEnabled}
                   />
                 </div>
@@ -199,7 +210,7 @@ export const BarcodeScanner = memo(function BarcodeScanner({
 
           {/* Error Recovery UI (T085) */}
           {error && (
-            <Card className="bg-red-900/20 border-red-500 p-4 w-full max-w-sm" role="alert">
+            <Card className="bg-red-900/20 border-red-500 p-4 w-full max-w-sm">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                   <svg
@@ -238,7 +249,7 @@ export const BarcodeScanner = memo(function BarcodeScanner({
           )}
 
           {/* Instructions (T084 - Accessibility) */}
-          <div id="scanner-instructions">
+          <div id="scanner-instructions" className="w-full max-w-sm flex-shrink-0">
             <ScannerInstructions />
           </div>
         </>
