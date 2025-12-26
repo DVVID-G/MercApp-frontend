@@ -50,8 +50,8 @@ export function useBarcodeScannerPermissions(): UseBarcodeScannerPermissions {
         ...prev,
         status,
         denyCount,
-        blockedAt,
-        lastRequested,
+        blockedAt: blockedAt || null,
+        lastRequested: lastRequested || null,
         instructions: status === 'blocked' ? getRecoveryInstructions() : null
       }));
 

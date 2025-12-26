@@ -14,7 +14,9 @@ import type {
   UseScannerOptions
 } from '../types/scanner.types';
 import { useDeviceCapabilities } from './useDeviceCapabilities';
-import { validateBarcode } from '../utils/barcode-validation';
+import { validateBarcode, shouldAcceptDetection } from '../utils/barcode-validation';
+import { mapQuaggaFormatToBarcodeFormat } from '../utils/quagga-config';
+import type { BarcodeFormat } from '../types/scanner.types';
 import { isDuplicateInWindow } from '../utils/duplicate-detection';
 
 export function useBarcodeScanner(options: UseScannerOptions) {
@@ -39,10 +41,46 @@ export function useBarcodeScanner(options: UseScannerOptions) {
   // Handle detected barcode
   const handleDetected = useCallback((result: any) => {
     const code = result.codeResult.code;
-    const format = result.codeResult.format;
+    const quaggaFormat = result.codeResult.format;
+    
+    // Extract confidence from QuaggaJS result
+    // QuaggaJS may have multiple decodedCodes, use the first one
+    const decodedCodes = result.codeResult.decodedCodes || [];
+    const primaryCode = decodedCodes[0] || result.codeResult;
+    // QuaggaJS uses 'quality' field (0-100) for confidence
+    // Fallback: if quality not available, check if codeResult has quality directly
+    const confidence = primaryCode.quality ?? result.codeResult.quality ?? 0;
+    
+    // Development logging for debugging (especially iOS issues)
+    const isDev = import.meta.env.DEV;
+    if (isDev) {
+      console.log('[Scanner] Detection:', {
+        code,
+        format: quaggaFormat,
+        confidence: confidence.toFixed(1) + '%',
+        decodedCodesCount: decodedCodes.length,
+        quality: primaryCode.quality
+      });
+    }
+    
+    // CRITICAL FIX: Validate confidence threshold (FR-017 requirement)
+    // Only accept codes with confidence >= 75%
+    if (!shouldAcceptDetection(confidence)) {
+      if (isDev) {
+        console.log(`[Scanner] Barcode rejected: confidence ${confidence.toFixed(1)}% < 75% threshold`);
+      }
+      return; // Reject low-confidence detections
+    }
+    
+    // Map QuaggaJS format to our BarcodeFormat type
+    const format = mapQuaggaFormatToBarcodeFormat(quaggaFormat);
+    if (!format) {
+      console.warn('Unknown barcode format:', quaggaFormat);
+      return;
+    }
 
-    // Validate barcode
-    if (!validateBarcode(code)) {
+    // Validate barcode with format
+    if (!validateBarcode(code, format)) {
       console.warn('Invalid barcode detected:', code);
       return;
     }
@@ -65,7 +103,7 @@ export function useBarcodeScanner(options: UseScannerOptions) {
     setScannerState('success');
     const barcodeResult: BarcodeResult = {
       code,
-      format,
+      format: format as BarcodeFormat,
       timestamp: Date.now()
     };
     setLastScannedCode(barcodeResult);
@@ -88,8 +126,15 @@ export function useBarcodeScanner(options: UseScannerOptions) {
       setScannerState('idle');
       containerRef.current = containerId;
 
+      // Get DOM element instead of string selector (iOS Safari compatibility)
+      const targetElement = document.getElementById(containerId);
+      if (!targetElement) {
+        throw new Error(`Container element with id "${containerId}" not found`);
+      }
+
       const config = getQuaggaConfig();
-      config.inputStream.target = `#${containerId}`;
+      // Use DOM element for better iOS Safari compatibility
+      config.inputStream.target = targetElement;
 
       // Initialize Quagga
       await new Promise<void>((resolve, reject) => {
@@ -132,12 +177,13 @@ export function useBarcodeScanner(options: UseScannerOptions) {
     }
   }, [handleDetected]);
 
-  // Pause scanning (stop but keep state)
+  // Pause scanning (stop but keep container reference for resume)
   const pauseScanning = useCallback(() => {
     try {
       Quagga.stop();
       setIsScanning(false);
       setScannerState('idle');
+      // Note: containerRef.current is preserved for resume
     } catch (err) {
       console.error('Failed to pause scanner:', err);
     }
@@ -151,14 +197,38 @@ export function useBarcodeScanner(options: UseScannerOptions) {
     }
 
     try {
+      // Get DOM element instead of string selector (iOS Safari compatibility)
+      const targetElement = document.getElementById(containerRef.current);
+      if (!targetElement) {
+        throw new Error(`Container element with id "${containerRef.current}" not found`);
+      }
+
+      const config = getQuaggaConfig();
+      // Use DOM element for better iOS Safari compatibility
+      config.inputStream.target = targetElement;
+      
+      // Re-initialize if needed
+      await new Promise<void>((resolve, reject) => {
+        Quagga.init(config, (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve();
+        });
+      });
+      
       await Quagga.start();
       setIsScanning(true);
       setScannerState('idle');
+      
+      // Re-register detection handler
+      Quagga.onDetected(handleDetected);
     } catch (err) {
       console.error('Failed to resume scanner:', err);
       setError('Failed to resume scanner');
     }
-  }, []);
+  }, [handleDetected, getQuaggaConfig]);
 
   // Auto-pause on blur
   useEffect(() => {

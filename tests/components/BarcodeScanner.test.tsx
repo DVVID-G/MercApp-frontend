@@ -8,34 +8,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BarcodeScanner } from '../../src/components/BarcodeScanner';
 
-// Mock hooks
+// Mock hooks with factory functions
+const mockUseBarcodeScannerPermissions = vi.fn();
+const mockUseBarcodeScanner = vi.fn();
+
 vi.mock('../../src/hooks/useBarcodeScannerPermissions', () => ({
-  useBarcodeScannerPermissions: () => ({
-    permissionState: {
-      status: 'granted',
-      lastRequested: null,
-      denyCount: 0,
-      blockedAt: null,
-      instructions: null
-    },
-    requestPermission: vi.fn().mockResolvedValue(true),
-    checkPermission: vi.fn().mockResolvedValue('granted'),
-    getInstructions: vi.fn(),
-    resetPermissionState: vi.fn()
-  })
+  useBarcodeScannerPermissions: () => mockUseBarcodeScannerPermissions()
 }));
 
 vi.mock('../../src/hooks/useBarcodeScanner', () => ({
-  useBarcodeScanner: () => ({
-    scannerState: 'idle',
-    isScanning: true,
-    lastScannedCode: null,
-    error: null,
-    startScanning: vi.fn(),
-    stopScanning: vi.fn(),
-    pauseScanning: vi.fn(),
-    resumeScanning: vi.fn()
-  })
+  useBarcodeScanner: (options: any) => mockUseBarcodeScanner(options)
 }));
 
 describe('BarcodeScanner Component', () => {
@@ -44,12 +26,37 @@ describe('BarcodeScanner Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    
+    // Default mocks
+    mockUseBarcodeScannerPermissions.mockReturnValue({
+      permissionState: {
+        status: 'granted',
+        lastRequested: null,
+        denyCount: 0,
+        blockedAt: null,
+        instructions: null
+      },
+      requestPermission: vi.fn().mockResolvedValue(true),
+      checkPermission: vi.fn().mockResolvedValue('granted'),
+      getInstructions: vi.fn(),
+      resetPermissionState: vi.fn()
+    });
+
+    mockUseBarcodeScanner.mockReturnValue({
+      scannerState: 'idle',
+      isScanning: true,
+      lastScannedCode: null,
+      error: null,
+      startScanning: vi.fn().mockResolvedValue(undefined),
+      stopScanning: vi.fn(),
+      pauseScanning: vi.fn(),
+      resumeScanning: vi.fn()
+    });
   });
 
   // T064: Renders camera permission prompt when not granted
   it('should render permission prompt when permission not granted', () => {
-    const { useBarcodeScannerPermissions } = require('../../src/hooks/useBarcodeScannerPermissions');
-    vi.mocked(useBarcodeScannerPermissions).mockReturnValue({
+    mockUseBarcodeScannerPermissions.mockReturnValue({
       permissionState: {
         status: 'not_requested',
         lastRequested: null,
@@ -65,14 +72,13 @@ describe('BarcodeScanner Component', () => {
 
     render(<BarcodeScanner onScan={mockOnScan} onClose={mockOnClose} />);
 
-    expect(screen.getByText(/cámara/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /acceso a cámara/i })).toBeInTheDocument();
   });
 
   // T065: Initializes Quagga once permission granted
   it('should start scanning when permission is granted', async () => {
-    const mockStartScanning = vi.fn();
-    const { useBarcodeScanner } = require('../../src/hooks/useBarcodeScanner');
-    vi.mocked(useBarcodeScanner).mockReturnValue({
+    const mockStartScanning = vi.fn().mockResolvedValue(undefined);
+    mockUseBarcodeScanner.mockReturnValue({
       scannerState: 'idle',
       isScanning: false,
       lastScannedCode: null,
@@ -99,32 +105,26 @@ describe('BarcodeScanner Component', () => {
 
   // T067: Updates overlay state to detecting/success/error
   it('should update overlay state on scanner state change', () => {
-    const { useBarcodeScanner } = require('../../src/hooks/useBarcodeScanner');
-    const { rerender } = render(<BarcodeScanner onScan={mockOnScan} onClose={mockOnClose} />);
-
-    // Change to success state
-    vi.mocked(useBarcodeScanner).mockReturnValue({
+    // Render directly with success state
+    mockUseBarcodeScanner.mockReturnValue({
       scannerState: 'success',
       isScanning: true,
-      lastScannedCode: { code: '1234567890123', format: 'ean_13', timestamp: Date.now() },
+      lastScannedCode: { code: '1234567890123', format: 'EAN_13', timestamp: Date.now() },
       error: null,
-      startScanning: vi.fn(),
+      startScanning: vi.fn().mockResolvedValue(undefined),
       stopScanning: vi.fn(),
       pauseScanning: vi.fn(),
       resumeScanning: vi.fn()
     });
 
-    rerender(<BarcodeScanner onScan={mockOnScan} onClose={mockOnClose} />);
+    render(<BarcodeScanner onScan={mockOnScan} onClose={mockOnClose} />);
 
-    expect(screen.getByText(/leído/i)).toBeInTheDocument();
+    expect(screen.getByText(/¡Código leído correctamente!/i)).toBeInTheDocument();
   });
 
   // T068: Calls onScan callback with barcode code
   it('should call onScan callback when barcode detected', async () => {
-    const mockOnSuccess = vi.fn();
-    const { useBarcodeScanner } = require('../../src/hooks/useBarcodeScanner');
-    
-    vi.mocked(useBarcodeScanner).mockImplementation((options: any) => {
+    mockUseBarcodeScanner.mockImplementation((options: any) => {
       // Immediately call success callback
       setTimeout(() => options.onScanSuccess('1234567890123'), 0);
       
@@ -133,7 +133,7 @@ describe('BarcodeScanner Component', () => {
         isScanning: true,
         lastScannedCode: null,
         error: null,
-        startScanning: vi.fn(),
+        startScanning: vi.fn().mockResolvedValue(undefined),
         stopScanning: vi.fn(),
         pauseScanning: vi.fn(),
         resumeScanning: vi.fn()
@@ -150,13 +150,12 @@ describe('BarcodeScanner Component', () => {
   // T069: Closes scanner when onClose called
   it('should stop scanning on close', async () => {
     const mockStopScanning = vi.fn();
-    const { useBarcodeScanner } = require('../../src/hooks/useBarcodeScanner');
-    vi.mocked(useBarcodeScanner).mockReturnValue({
+    mockUseBarcodeScanner.mockReturnValue({
       scannerState: 'idle',
       isScanning: true,
       lastScannedCode: null,
       error: null,
-      startScanning: vi.fn(),
+      startScanning: vi.fn().mockResolvedValue(undefined),
       stopScanning: mockStopScanning,
       pauseScanning: vi.fn(),
       resumeScanning: vi.fn()
@@ -178,13 +177,12 @@ describe('BarcodeScanner Component', () => {
 
   // T071: Handles camera errors gracefully
   it('should display error message on camera error', () => {
-    const { useBarcodeScanner } = require('../../src/hooks/useBarcodeScanner');
-    vi.mocked(useBarcodeScanner).mockReturnValue({
+    mockUseBarcodeScanner.mockReturnValue({
       scannerState: 'idle',
       isScanning: false,
       lastScannedCode: null,
       error: 'Failed to access camera',
-      startScanning: vi.fn(),
+      startScanning: vi.fn().mockResolvedValue(undefined),
       stopScanning: vi.fn(),
       pauseScanning: vi.fn(),
       resumeScanning: vi.fn()
@@ -220,7 +218,8 @@ describe('BarcodeScanner Component', () => {
   it('should render close button', () => {
     render(<BarcodeScanner onScan={mockOnScan} onClose={mockOnClose} />);
 
-    const closeButton = screen.getByRole('button', { name: /cerrar/i });
+    // The button contains the ✕ symbol
+    const closeButton = screen.getByRole('button', { name: /✕/ });
     expect(closeButton).toBeInTheDocument();
   });
 
@@ -229,7 +228,8 @@ describe('BarcodeScanner Component', () => {
     const user = userEvent.setup();
     render(<BarcodeScanner onScan={mockOnScan} onClose={mockOnClose} />);
 
-    const closeButton = screen.getByRole('button', { name: /cerrar/i });
+    // The button contains the ✕ symbol
+    const closeButton = screen.getByRole('button', { name: /✕/ });
     await user.click(closeButton);
 
     expect(mockOnClose).toHaveBeenCalled();

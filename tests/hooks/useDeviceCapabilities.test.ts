@@ -18,13 +18,19 @@ describe('useDeviceCapabilities', () => {
   // T051: Detects capabilities correctly
   it('should detect device capabilities on mount', async () => {
     const mockCapabilities = {
-      cores: 4,
-      memory: 4,
-      isMobile: true,
-      isIOS: false,
-      isAndroid: true,
-      hasFastProcessing: true,
-      tier: 'medium' as const
+      hasCamera: true,
+      cameraCount: 2,
+      hasBackCamera: true,
+      hasFrontCamera: true,
+      supportsGetUserMedia: true,
+      supportsVibration: true,
+      supportsPermissionsAPI: true,
+      cpuCores: 4,
+      memoryGB: 4,
+      performanceTier: 'medium' as const,
+      platform: 'android' as const,
+      browser: 'chrome' as const,
+      isMobile: true
     };
 
     vi.mocked(deviceDetection.detectDeviceCapabilities).mockResolvedValue(mockCapabilities);
@@ -44,13 +50,19 @@ describe('useDeviceCapabilities', () => {
   // T052: Generates low tier config for low-spec device
   it('should generate low tier config for low-spec device', async () => {
     const mockCapabilities = {
-      cores: 2,
-      memory: 1,
-      isMobile: true,
-      isIOS: false,
-      isAndroid: true,
-      hasFastProcessing: false,
-      tier: 'low' as const
+      hasCamera: true,
+      cameraCount: 1,
+      hasBackCamera: true,
+      hasFrontCamera: false,
+      supportsGetUserMedia: true,
+      supportsVibration: false,
+      supportsPermissionsAPI: false,
+      cpuCores: 2,
+      memoryGB: 1,
+      performanceTier: 'low' as const,
+      platform: 'android' as const,
+      browser: 'chrome' as const,
+      isMobile: true
     };
 
     vi.mocked(deviceDetection.detectDeviceCapabilities).mockResolvedValue(mockCapabilities);
@@ -63,21 +75,27 @@ describe('useDeviceCapabilities', () => {
 
     const config = result.current.getQuaggaConfig();
     
-    expect(config.locate).toBe(false);
-    expect(config.inputStream.constraints.width).toBe(320);
+    expect(config.locate).toBe(true);
+    expect(config.inputStream.constraints.width?.ideal).toBe(640);
     expect(config.frequency).toBe(5);
   });
 
   // T053: Generates medium tier config for mid-spec device
   it('should generate medium tier config for mid-spec device', async () => {
     const mockCapabilities = {
-      cores: 4,
-      memory: 4,
-      isMobile: true,
-      isIOS: false,
-      isAndroid: true,
-      hasFastProcessing: true,
-      tier: 'medium' as const
+      hasCamera: true,
+      cameraCount: 2,
+      hasBackCamera: true,
+      hasFrontCamera: true,
+      supportsGetUserMedia: true,
+      supportsVibration: true,
+      supportsPermissionsAPI: true,
+      cpuCores: 4,
+      memoryGB: 4,
+      performanceTier: 'medium' as const,
+      platform: 'android' as const,
+      browser: 'chrome' as const,
+      isMobile: true
     };
 
     vi.mocked(deviceDetection.detectDeviceCapabilities).mockResolvedValue(mockCapabilities);
@@ -91,20 +109,26 @@ describe('useDeviceCapabilities', () => {
     const config = result.current.getQuaggaConfig();
     
     expect(config.locate).toBe(true);
-    expect(config.inputStream.constraints.width).toBe(640);
+    expect(config.inputStream.constraints.width?.ideal).toBe(1280);
     expect(config.frequency).toBe(10);
   });
 
   // T054: Generates high tier config for high-spec device
   it('should generate high tier config for high-spec device', async () => {
     const mockCapabilities = {
-      cores: 8,
-      memory: 8,
-      isMobile: false,
-      isIOS: false,
-      isAndroid: false,
-      hasFastProcessing: true,
-      tier: 'high' as const
+      hasCamera: true,
+      cameraCount: 2,
+      hasBackCamera: true,
+      hasFrontCamera: true,
+      supportsGetUserMedia: true,
+      supportsVibration: true,
+      supportsPermissionsAPI: true,
+      cpuCores: 8,
+      memoryGB: 8,
+      performanceTier: 'high' as const,
+      platform: 'desktop' as const,
+      browser: 'chrome' as const,
+      isMobile: false
     };
 
     vi.mocked(deviceDetection.detectDeviceCapabilities).mockResolvedValue(mockCapabilities);
@@ -118,9 +142,9 @@ describe('useDeviceCapabilities', () => {
     const config = result.current.getQuaggaConfig();
     
     expect(config.locate).toBe(true);
-    expect(config.inputStream.constraints.width).toBe(1280);
-    expect(config.frequency).toBe(10);
-    expect(config.numOfWorkers).toBe(4);
+    expect(config.inputStream.constraints.width.ideal).toBe(1920);
+    expect(config.frequency).toBe(15);
+    expect(config.numOfWorkers).toBe(2);
   });
 
   it('should fallback to medium tier on error', async () => {
