@@ -51,6 +51,7 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
   const listRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const listboxId = useId();
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   const selectedOption = options.find(opt => opt.value === value);
   const currentValueIndex = options.findIndex(opt => opt.value === value);
@@ -278,6 +279,45 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                     tabIndex={isFocused ? 0 : -1}
                     onClick={() => {
                       handleSelect(option.value);
+                    }}
+                    onTouchStart={(e) => {
+                      // Store touch start position to detect scroll vs tap
+                      if (e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        touchStartRef.current = {
+                          x: touch.clientX,
+                          y: touch.clientY,
+                          time: Date.now()
+                        };
+                      }
+                    }}
+                    onTouchMove={(e) => {
+                      // Don't prevent default - allow scroll to work naturally
+                      // Just track movement to distinguish tap from scroll
+                      if (touchStartRef.current && e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+                        
+                        // If vertical movement > 10px, mark as scroll (don't trigger click)
+                        if (deltaY > 10) {
+                          touchStartRef.current = null; // Mark as scroll, cancel tap
+                        }
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      // Only trigger click if it was a tap (not a scroll)
+                      if (touchStartRef.current) {
+                        const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartRef.current.x);
+                        const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartRef.current.y);
+                        const deltaTime = Date.now() - touchStartRef.current.time;
+                        
+                        // If movement was small and quick, it's a tap
+                        if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                          e.preventDefault();
+                          handleSelect(option.value);
+                        }
+                        touchStartRef.current = null;
+                      }
                     }}
                     onKeyDown={(e) => {
                       // Handle keyboard navigation on individual buttons
