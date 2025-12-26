@@ -60,6 +60,10 @@ export const BarcodeScanner = memo(function BarcodeScanner({
   const [isInitializing, setIsInitializing] = useState(false);
   const [isLookingUpProduct, setIsLookingUpProduct] = useState(false);
 
+  // Refs to store pause/resume functions (needed because handleScanSuccess is defined before hook destructuring)
+  const pauseScanningRef = useRef<(() => void) | null>(null);
+  const resumeScanningRef = useRef<(() => Promise<void>) | null>(null);
+
   // Memoized callbacks for performance (T086)
   const handleScanSuccess = useCallback(async (code: string) => {
     log('Barcode detected:', code);
@@ -67,12 +71,15 @@ export const BarcodeScanner = memo(function BarcodeScanner({
     // Legacy support: call onScan if provided
     if (onScan) {
       onScan(code);
-      return;
+      return; // Early return - no need to pause/resume for legacy path
     }
     
     // New behavior: search for product (T088, T089)
     if (onProductFound || onProductNotFound) {
+      // Pause scanning to prevent concurrent lookups and race conditions
+      pauseScanningRef.current?.();
       setIsLookingUpProduct(true);
+      
       try {
         log('Looking up product for barcode:', code);
         const product = await getProductByBarcode(code);
@@ -110,6 +117,11 @@ export const BarcodeScanner = memo(function BarcodeScanner({
         }
       } finally {
         setIsLookingUpProduct(false);
+        // Always resume scanning after lookup completes (success or error)
+        // resumeScanning is async, but we don't await to avoid blocking
+        resumeScanningRef.current?.().catch((err) => {
+          console.error('Failed to resume scanning after product lookup:', err);
+        });
       }
     }
   }, [onScan, onProductFound, onProductNotFound, onProductLookupError]);
@@ -123,13 +135,19 @@ export const BarcodeScanner = memo(function BarcodeScanner({
     isScanning,
     error,
     startScanning,
-    stopScanning
+    stopScanning,
+    pauseScanning,
+    resumeScanning
   } = useBarcodeScanner({
     onScanSuccess: handleScanSuccess,
     onScanError: handleScanError,
     autoPauseOnBlur,
     duplicateCooldown: 500
   });
+
+  // Update refs with pause/resume functions after hook destructuring
+  pauseScanningRef.current = pauseScanning;
+  resumeScanningRef.current = resumeScanning;
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const hasStartedRef = useRef(false);
