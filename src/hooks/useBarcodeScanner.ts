@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Quagga from '@ericblade/quagga2';
 import type {
-  ScannerState,
+  ScannerVisualState,
   BarcodeResult,
   UseScannerOptions
 } from '../types/scanner.types';
@@ -27,7 +27,7 @@ export function useBarcodeScanner(options: UseScannerOptions) {
 
   const { getQuaggaConfig } = useDeviceCapabilities();
 
-  const [scannerState, setScannerState] = useState<ScannerState>('idle');
+  const [scannerState, setScannerState] = useState<ScannerVisualState>('idle');
   const [isScanning, setIsScanning] = useState(false);
   const [lastScannedCode, setLastScannedCode] = useState<BarcodeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +109,7 @@ export function useBarcodeScanner(options: UseScannerOptions) {
       Quagga.onDetected(handleDetected);
 
       setIsScanning(true);
+      setScannerState('detecting');
     } catch (err: any) {
       console.error('Failed to start scanner:', err);
       setError(err.message || 'Failed to start scanner');
