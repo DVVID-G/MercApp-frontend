@@ -37,6 +37,7 @@ export function useBarcodeScanner(options: UseScannerOptions) {
   const containerRef = useRef<string | null>(null);
   const wasAutoPaused = useRef(false);
   const recentScansRef = useRef<Array<{ code: string; timestamp: number }>>([]);
+  const onProcessedCallbackRef = useRef<((result: any) => void) | null>(null);
 
   // Handle detected barcode
   const handleDetected = useCallback((result: any) => {
@@ -187,7 +188,8 @@ export function useBarcodeScanner(options: UseScannerOptions) {
       // Add processing listener for debugging (to see if QuaggaJS is processing frames)
       const isDev = import.meta.env.DEV;
       if (isDev) {
-        Quagga.onProcessed((result: any) => {
+        // Store callback reference for cleanup
+        const onProcessedCallback = (result: any) => {
           // This fires for every frame processed, even if no barcode detected
           // Useful for debugging to see if QuaggaJS is working
           if (result && result.codeResult && result.codeResult.code) {
@@ -197,7 +199,9 @@ export function useBarcodeScanner(options: UseScannerOptions) {
               quality: result.codeResult.quality
             });
           }
-        });
+        };
+        onProcessedCallbackRef.current = onProcessedCallback;
+        Quagga.onProcessed(onProcessedCallback);
       }
 
       setIsScanning(true);
@@ -224,6 +228,11 @@ export function useBarcodeScanner(options: UseScannerOptions) {
     try {
       Quagga.stop();
       Quagga.offDetected(handleDetected);
+      // Remove processing listener if it was registered
+      if (onProcessedCallbackRef.current) {
+        Quagga.offProcessed(onProcessedCallbackRef.current);
+        onProcessedCallbackRef.current = null;
+      }
       setIsScanning(false);
       setScannerState('idle');
       containerRef.current = null;
@@ -236,6 +245,11 @@ export function useBarcodeScanner(options: UseScannerOptions) {
   const pauseScanning = useCallback(() => {
     try {
       Quagga.stop();
+      // Remove processing listener if it was registered
+      if (onProcessedCallbackRef.current) {
+        Quagga.offProcessed(onProcessedCallbackRef.current);
+        // Keep reference for resume (will be re-registered)
+      }
       setIsScanning(false);
       setScannerState('idle');
       // Note: containerRef.current is preserved for resume
@@ -282,6 +296,22 @@ export function useBarcodeScanner(options: UseScannerOptions) {
       
       // Re-register detection handler
       Quagga.onDetected(handleDetected);
+      
+      // Re-register processing listener for debugging if in dev mode
+      const isDev = import.meta.env.DEV;
+      if (isDev && !onProcessedCallbackRef.current) {
+        const onProcessedCallback = (result: any) => {
+          if (result && result.codeResult && result.codeResult.code) {
+            console.log('[Scanner] Processed frame with potential code:', {
+              code: result.codeResult.code,
+              format: result.codeResult.format,
+              quality: result.codeResult.quality
+            });
+          }
+        };
+        onProcessedCallbackRef.current = onProcessedCallback;
+        Quagga.onProcessed(onProcessedCallback);
+      }
     } catch (err) {
       console.error('Failed to resume scanner:', err);
       setError('Failed to resume scanner');

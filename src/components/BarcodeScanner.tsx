@@ -16,6 +16,7 @@ import { ScannerOverlay } from './scanner/ScannerOverlay';
 import { ScannerInstructions } from './scanner/ScannerInstructions';
 import { Card } from './Card';
 import { Button } from './Button';
+import { getProductByBarcode, type Product } from '../services/product.service';
 import type { ScannerVisualState } from '../types/scanner.types';
 
 // Development logging
@@ -27,7 +28,14 @@ const log = (...args: any[]) => {
 };
 
 interface BarcodeScannerProps {
-  onScan: (code: string) => void;
+  /** @deprecated Use onProductFound/onProductNotFound instead */
+  onScan?: (code: string) => void;
+  /** Called when product is found in database */
+  onProductFound?: (product: Product) => void;
+  /** Called when product is not found (404) - barcode is passed for manual creation */
+  onProductNotFound?: (barcode: string) => void;
+  /** Called when product lookup fails due to network/other errors (not 404) */
+  onProductLookupError?: (error: any, barcode: string) => void;
   onClose: () => void;
   onManualEntry?: () => void;
   vibrationEnabled?: boolean;
@@ -36,6 +44,9 @@ interface BarcodeScannerProps {
 
 export const BarcodeScanner = memo(function BarcodeScanner({
   onScan,
+  onProductFound,
+  onProductNotFound,
+  onProductLookupError,
   onClose,
   onManualEntry,
   vibrationEnabled = true,
@@ -47,12 +58,61 @@ export const BarcodeScanner = memo(function BarcodeScanner({
   } = useBarcodeScannerPermissions();
 
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isLookingUpProduct, setIsLookingUpProduct] = useState(false);
 
   // Memoized callbacks for performance (T086)
-  const handleScanSuccess = useCallback((code: string) => {
+  const handleScanSuccess = useCallback(async (code: string) => {
     log('Barcode detected:', code);
-    onScan(code);
-  }, [onScan]);
+    
+    // Legacy support: call onScan if provided
+    if (onScan) {
+      onScan(code);
+      return;
+    }
+    
+    // New behavior: search for product (T088, T089)
+    if (onProductFound || onProductNotFound) {
+      setIsLookingUpProduct(true);
+      try {
+        log('Looking up product for barcode:', code);
+        const product = await getProductByBarcode(code);
+        
+        if (product) {
+          log('Product found:', product);
+          onProductFound?.(product);
+        } else {
+          log('Product not found for barcode:', code);
+          // Product not found (404) - allow manual creation
+          onProductNotFound?.(code);
+        }
+      } catch (error: any) {
+        console.error('Error looking up product:', error);
+        
+        // Distinguish between 404 (not found) and other errors (network, timeout, etc.)
+        const isNotFound = error?.response?.status === 404 || 
+                          (error?.status === 404) ||
+                          (typeof error === 'object' && error !== null && 'status' in error && error.status === 404);
+        
+        if (isNotFound) {
+          // HTTP 404: Product not found - allow manual creation
+          log('Product not found (404) for barcode:', code);
+          onProductNotFound?.(code);
+        } else {
+          // Network/timeout/other errors: Don't treat as missing product
+          // Call error handler if provided, otherwise log
+          log('Product lookup error (not 404) for barcode:', code, error);
+          if (onProductLookupError) {
+            onProductLookupError(error, code);
+          } else {
+            // Fallback: show error but don't treat as missing product
+            console.error('Product lookup failed. Please check your connection and try again.', error);
+          }
+        }
+      } finally {
+        setIsLookingUpProduct(false);
+      }
+    }
+  }, [onScan, onProductFound, onProductNotFound, onProductLookupError]);
 
   const handleScanError = useCallback((err: any) => {
     log('Scanner error:', err);
@@ -186,7 +246,15 @@ export const BarcodeScanner = memo(function BarcodeScanner({
                 </div>
               )}
               
-              {!isScanning && !error && !isInitializing && (
+              {/* Product Lookup State (FR-010) */}
+              {isLookingUpProduct && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20 bg-black/80" role="status" aria-live="polite" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                  <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-white text-sm font-medium">Buscando producto...</span>
+                </div>
+              )}
+              
+              {!isScanning && !error && !isInitializing && !isLookingUpProduct && (
                 <div 
                   className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm z-20" 
                   role="status"
