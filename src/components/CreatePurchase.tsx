@@ -59,6 +59,12 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
     toast.info(`Producto no encontrado. Créalo ahora.`);
   };
 
+  const handleScanLookupError = (error: any, barcode: string) => {
+    console.error('Error looking up product:', error);
+    toast.error('Error al buscar el producto. Verifica tu conexión e intenta nuevamente.');
+    // Keep scanner open so user can retry
+  };
+
   const handleProductSelect = (catalogProduct: CatalogProduct) => {
     // Check if product already exists in list
     const existingProduct = products.find(p => p.id === catalogProduct._id);
@@ -355,6 +361,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
               <BarcodeScanner 
                 onProductFound={handleScanSuccess}
                 onProductNotFound={handleScanNotFound}
+                onProductLookupError={handleScanLookupError}
                 onClose={() => setShowScanner(false)}
               />
             </motion.div>

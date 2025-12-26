@@ -32,8 +32,10 @@ interface BarcodeScannerProps {
   onScan?: (code: string) => void;
   /** Called when product is found in database */
   onProductFound?: (product: Product) => void;
-  /** Called when product is not found - barcode is passed for manual creation */
+  /** Called when product is not found (404) - barcode is passed for manual creation */
   onProductNotFound?: (barcode: string) => void;
+  /** Called when product lookup fails due to network/other errors (not 404) */
+  onProductLookupError?: (error: any, barcode: string) => void;
   onClose: () => void;
   onManualEntry?: () => void;
   vibrationEnabled?: boolean;
@@ -44,6 +46,7 @@ export const BarcodeScanner = memo(function BarcodeScanner({
   onScan,
   onProductFound,
   onProductNotFound,
+  onProductLookupError,
   onClose,
   onManualEntry,
   vibrationEnabled = true,
@@ -79,17 +82,37 @@ export const BarcodeScanner = memo(function BarcodeScanner({
           onProductFound?.(product);
         } else {
           log('Product not found for barcode:', code);
+          // Product not found (404) - allow manual creation
           onProductNotFound?.(code);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error looking up product:', error);
-        // On error, treat as product not found to allow manual creation
-        onProductNotFound?.(code);
+        
+        // Distinguish between 404 (not found) and other errors (network, timeout, etc.)
+        const isNotFound = error?.response?.status === 404 || 
+                          (error?.status === 404) ||
+                          (typeof error === 'object' && error !== null && 'status' in error && error.status === 404);
+        
+        if (isNotFound) {
+          // HTTP 404: Product not found - allow manual creation
+          log('Product not found (404) for barcode:', code);
+          onProductNotFound?.(code);
+        } else {
+          // Network/timeout/other errors: Don't treat as missing product
+          // Call error handler if provided, otherwise log
+          log('Product lookup error (not 404) for barcode:', code, error);
+          if (onProductLookupError) {
+            onProductLookupError(error, code);
+          } else {
+            // Fallback: show error but don't treat as missing product
+            console.error('Product lookup failed. Please check your connection and try again.', error);
+          }
+        }
       } finally {
         setIsLookingUpProduct(false);
       }
     }
-  }, [onScan, onProductFound, onProductNotFound]);
+  }, [onScan, onProductFound, onProductNotFound, onProductLookupError]);
 
   const handleScanError = useCallback((err: any) => {
     log('Scanner error:', err);
