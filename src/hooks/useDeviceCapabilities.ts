@@ -6,13 +6,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { DeviceCapabilities, DeviceTier } from '../types/scanner.types';
+import type { DeviceCapabilities, PerformanceTier } from '../types/scanner.types';
 import { detectDeviceCapabilities } from '../utils/device-detection';
 import { generateQuaggaConfig } from '../utils/quagga-config';
 
 export function useDeviceCapabilities() {
   const [capabilities, setCapabilities] = useState<DeviceCapabilities | null>(null);
-  const [tier, setTier] = useState<DeviceTier>('medium');
+  const [tier, setTier] = useState<PerformanceTier>('medium');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export function useDeviceCapabilities() {
         setIsLoading(true);
         const detected = await detectDeviceCapabilities();
         setCapabilities(detected);
-        setTier(detected.tier);
+        setTier(detected.performanceTier);
       } catch (error) {
         console.error('Failed to detect device capabilities:', error);
         // Fallback to medium tier
