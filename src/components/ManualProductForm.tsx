@@ -100,7 +100,14 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="absolute z-50 w-full mt-2 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-2xl max-h-60 overflow-hidden"
           >
-            <div className="overflow-y-auto max-h-60 scrollbar-thin">
+            <div 
+              className="overflow-y-auto max-h-60 scrollbar-thin"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y',
+                overscrollBehavior: 'contain'
+              }}
+            >
               {options.map((option, index) => (
                 <button
                   key={option.value}
