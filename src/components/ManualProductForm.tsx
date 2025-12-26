@@ -200,13 +200,14 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
         setSelectedIndex(0);
         scrollToOption(0);
         break;
-      case 'End':
+      case 'End': {
         e.preventDefault();
         e.stopPropagation();
         const lastIndex = options.length - 1;
         setSelectedIndex(lastIndex);
         scrollToOption(lastIndex);
         break;
+      }
     }
   };
 
