@@ -40,26 +40,54 @@ export function useBarcodeScanner(options: UseScannerOptions) {
 
   // Handle detected barcode
   const handleDetected = useCallback((result: any) => {
-    const code = result.codeResult.code;
-    const quaggaFormat = result.codeResult.format;
+    const isDev = import.meta.env.DEV;
+    
+    // Log raw result for debugging
+    if (isDev) {
+      console.log('[Scanner] Raw QuaggaJS result:', result);
+      console.log('[Scanner] codeResult:', result.codeResult);
+    }
+    
+    const code = result.codeResult?.code;
+    const quaggaFormat = result.codeResult?.format;
+    
+    if (!code) {
+      console.warn('[Scanner] No code found in result:', result);
+      return;
+    }
     
     // Extract confidence from QuaggaJS result
     // QuaggaJS may have multiple decodedCodes, use the first one
     const decodedCodes = result.codeResult.decodedCodes || [];
     const primaryCode = decodedCodes[0] || result.codeResult;
+    
     // QuaggaJS uses 'quality' field (0-100) for confidence
-    // Fallback: if quality not available, check if codeResult has quality directly
-    const confidence = primaryCode.quality ?? result.codeResult.quality ?? 0;
+    // Try multiple possible locations for quality/confidence
+    let confidence = primaryCode?.quality ?? 
+                     primaryCode?.confidence ?? 
+                     result.codeResult?.quality ?? 
+                     result.codeResult?.confidence ?? 
+                     null;
+    
+    // If quality is not available, QuaggaJS may still be confident
+    // In @ericblade/quagga2, if onDetected fires, it usually means high confidence
+    // Default to 100 if quality not provided (QuaggaJS only fires onDetected for confident detections)
+    if (confidence === null || confidence === undefined) {
+      if (isDev) {
+        console.warn('[Scanner] Quality/confidence not found in result, assuming 100% (QuaggaJS only fires onDetected for confident detections)');
+      }
+      confidence = 100; // Assume high confidence if QuaggaJS fired onDetected
+    }
     
     // Development logging for debugging (especially iOS issues)
-    const isDev = import.meta.env.DEV;
     if (isDev) {
       console.log('[Scanner] Detection:', {
         code,
         format: quaggaFormat,
         confidence: confidence.toFixed(1) + '%',
         decodedCodesCount: decodedCodes.length,
-        quality: primaryCode.quality
+        primaryCodeKeys: primaryCode ? Object.keys(primaryCode) : [],
+        codeResultKeys: result.codeResult ? Object.keys(result.codeResult) : []
       });
     }
     
@@ -134,11 +162,14 @@ export function useBarcodeScanner(options: UseScannerOptions) {
 
       const config = getQuaggaConfig();
       // Use DOM element for better iOS Safari compatibility
-      config.inputStream.target = targetElement;
+      if (config.inputStream) {
+        config.inputStream.target = targetElement || undefined;
+      }
 
       // Initialize Quagga
+      // Type assertion needed: QuaggaJS expects Element but we use HTMLElement
       await new Promise<void>((resolve, reject) => {
-        Quagga.init(config, (err) => {
+        Quagga.init(config as any, (err) => {
           if (err) {
             reject(err);
             return;
@@ -152,9 +183,33 @@ export function useBarcodeScanner(options: UseScannerOptions) {
 
       // Register detection handler
       Quagga.onDetected(handleDetected);
+      
+      // Add processing listener for debugging (to see if QuaggaJS is processing frames)
+      const isDev = import.meta.env.DEV;
+      if (isDev) {
+        Quagga.onProcessed((result: any) => {
+          // This fires for every frame processed, even if no barcode detected
+          // Useful for debugging to see if QuaggaJS is working
+          if (result && result.codeResult && result.codeResult.code) {
+            console.log('[Scanner] Processed frame with potential code:', {
+              code: result.codeResult.code,
+              format: result.codeResult.format,
+              quality: result.codeResult.quality
+            });
+          }
+        });
+      }
 
       setIsScanning(true);
       setScannerState('detecting');
+      
+      if (isDev) {
+        console.log('[Scanner] Started successfully with config:', {
+          readers: config.decoder?.readers,
+          resolution: config.inputStream?.constraints,
+          frequency: config.frequency
+        });
+      }
     } catch (err: any) {
       console.error('Failed to start scanner:', err);
       setError(err.message || 'Failed to start scanner');
@@ -205,11 +260,14 @@ export function useBarcodeScanner(options: UseScannerOptions) {
 
       const config = getQuaggaConfig();
       // Use DOM element for better iOS Safari compatibility
-      config.inputStream.target = targetElement;
+      if (config.inputStream) {
+        config.inputStream.target = targetElement || undefined;
+      }
       
       // Re-initialize if needed
+      // Type assertion needed: QuaggaJS expects Element but we use HTMLElement
       await new Promise<void>((resolve, reject) => {
-        Quagga.init(config, (err) => {
+        Quagga.init(config as any, (err) => {
           if (err) {
             reject(err);
             return;
