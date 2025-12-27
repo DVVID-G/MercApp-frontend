@@ -105,7 +105,9 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         optionRefs.current[selectedIndex]?.focus();
-      }, 0);
+        // Scroll to center for carousel effect
+        scrollToOption(selectedIndex, 'auto');
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [isOpen, selectedIndex]);
@@ -116,11 +118,11 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
     setSelectedIndex(-1);
   };
 
-  const scrollToOption = (index: number) => {
+  const scrollToOption = (index: number, behavior: 'smooth' | 'auto' = 'smooth') => {
     if (listRef.current && optionRefs.current[index]) {
       const element = optionRefs.current[index];
       if (element) {
-        element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        element.scrollIntoView({ block: 'center', behavior, inline: 'nearest' });
       }
     }
   };
@@ -251,11 +253,14 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
             className="absolute z-50 w-full mt-2 rounded-[12px] shadow-2xl"
             style={{ pointerEvents: 'auto' }}
           >
+            {/* Top fade indicator */}
+            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-950 to-transparent pointer-events-none z-10 rounded-t-[12px]" />
+            
             <div
               ref={listRef}
               role="listbox"
               id={listboxId}
-              className="bg-gray-950 border-2 border-gray-800 rounded-[12px]"
+              className="bg-gray-950 border-2 border-gray-800 rounded-[12px] relative"
               style={{
                 maxHeight: '240px',
                 height: 'auto',
@@ -265,6 +270,9 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain',
                 cursor: 'default',
+                scrollBehavior: 'smooth',
+                scrollPaddingTop: '48px',
+                scrollPaddingBottom: '48px',
               }}
               onTouchStart={(e) => {
                 e.stopPropagation();
@@ -328,6 +336,9 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                 );
               })}
             </div>
+            
+            {/* Bottom fade indicator */}
+            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-950 to-transparent pointer-events-none z-10 rounded-b-[12px]" />
           </motion.div>
         )}
       </AnimatePresence>
