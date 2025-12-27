@@ -63,44 +63,47 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
   useEffect(() => {
     if (!isOpen || !listRef.current) return;
 
+    const container = listRef.current;
+
     const handleScroll = () => {
-      if (isScrollingRef.current) return;
-      
-      const container = listRef.current;
-      if (!container) return;
+      if (isScrollingRef.current || !container) return;
 
       const scrollTop = container.scrollTop;
       const scrollHeight = container.scrollHeight;
-      const clientHeight = container.clientHeight;
       const sectionHeight = scrollHeight / 3;
 
       // If scrolled to top section, jump to middle section
-      if (scrollTop < sectionHeight * 0.1) {
+      if (scrollTop < sectionHeight * 0.15) {
         isScrollingRef.current = true;
-        container.scrollTop = scrollTop + sectionHeight;
-        setTimeout(() => { isScrollingRef.current = false; }, 50);
+        requestAnimationFrame(() => {
+          container.scrollTop = scrollTop + sectionHeight;
+          isScrollingRef.current = false;
+        });
       }
       // If scrolled to bottom section, jump to middle section
-      else if (scrollTop > sectionHeight * 2.9) {
+      else if (scrollTop > sectionHeight * 2.85) {
         isScrollingRef.current = true;
-        container.scrollTop = scrollTop - sectionHeight;
-        setTimeout(() => { isScrollingRef.current = false; }, 50);
+        requestAnimationFrame(() => {
+          container.scrollTop = scrollTop - sectionHeight;
+          isScrollingRef.current = false;
+        });
       }
     };
 
-    container.addEventListener('scroll', handleScroll);
+    container.addEventListener('scroll', handleScroll, { passive: true });
     
-    // Start at middle section
-    const timer = setTimeout(() => {
-      if (container) {
+    // Start at middle section with proper calculation
+    requestAnimationFrame(() => {
+      if (container && optionRefs.current[currentValueIndex]) {
         const sectionHeight = container.scrollHeight / 3;
-        container.scrollTop = sectionHeight + (currentValueIndex >= 0 ? currentValueIndex * 48 : 0);
+        const selectedElement = optionRefs.current[currentValueIndex];
+        const elementOffset = selectedElement ? selectedElement.offsetTop : 0;
+        container.scrollTop = sectionHeight + elementOffset;
       }
-    }, 50);
+    });
 
     return () => {
       container.removeEventListener('scroll', handleScroll);
-      clearTimeout(timer);
     };
   }, [isOpen, currentValueIndex]);
 
@@ -151,13 +154,10 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
   // Focus management: focus on selected option when dropdown opens
   useEffect(() => {
     if (isOpen && selectedIndex >= 0 && optionRefs.current[selectedIndex]) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        optionRefs.current[selectedIndex]?.focus();
-        // Scroll to center for carousel effect
-        scrollToOption(selectedIndex, 'auto');
-      }, 100);
-      return () => clearTimeout(timer);
+      // Focus without scrolling - infinite scroll handles positioning
+      requestAnimationFrame(() => {
+        optionRefs.current[selectedIndex]?.focus({ preventScroll: true });
+      });
     }
   }, [isOpen, selectedIndex]);
 
@@ -303,12 +303,16 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
             style={{ pointerEvents: 'auto' }}
           >
             {/* Top fade indicator */}
-            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-950 to-transparent pointer-events-none z-10 rounded-t-[12px]" />
+            <div 
+              className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-950 to-transparent pointer-events-none z-10 rounded-t-[12px]"
+              aria-hidden="true"
+            />
             
             <div
               ref={listRef}
               role="listbox"
               id={listboxId}
+              aria-label="Lista de categorías"
               className="bg-gray-950 border-2 border-gray-800 rounded-[12px] relative"
               style={{
                 maxHeight: '240px',
@@ -319,7 +323,7 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain',
                 cursor: 'default',
-                scrollBehavior: 'smooth',
+                scrollBehavior: 'auto',
                 scrollPaddingTop: '48px',
                 scrollPaddingBottom: '48px',
               }}
@@ -343,7 +347,6 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                       if (sectionIndex === 1) {
                         optionRefs.current[localIndex] = el;
                       }
-                    }}
                     }}
                     type="button"
                     role="option"
@@ -392,7 +395,10 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
             </div>
             
             {/* Bottom fade indicator */}
-            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-950 to-transparent pointer-events-none z-10 rounded-b-[12px]" />
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-950 to-transparent pointer-events-none z-10 rounded-b-[12px]"
+              aria-hidden="true"
+            />
           </motion.div>
         )}
       </AnimatePresence>
