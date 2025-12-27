@@ -10,6 +10,8 @@ import {
 } from '../ui/drawer';
 import { DateRangeSelector } from './DateRangeSelector';
 import { SortSelector } from './SortSelector';
+import { BrandFilter } from './BrandFilter';
+import { CategoryFilter } from './CategoryFilter';
 import { AdvancedFilters } from './AdvancedFilters';
 import { useFilters } from '../../hooks/useFilters';
 import { X } from 'lucide-react';
@@ -251,6 +253,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, onClose }) => 
     state.search ||
     state.priceRange.min !== null ||
     state.priceRange.max !== null ||
+    state.brands.length > 0 ||
+    state.categories.length > 0 ||
     state.sort.field !== 'date' ||
     state.sort.direction !== 'desc';
 
@@ -388,6 +392,16 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, onClose }) => 
           >
             <h3 id="sort-heading" className="text-sm font-medium text-white mb-3">Ordenar por</h3>
             <SortSelector />
+          </section>
+
+          {/* Brand Filter Section */}
+          <section className="py-4 border-b border-gray-800">
+            <BrandFilter />
+          </section>
+
+          {/* Category Filter Section */}
+          <section className="py-4 border-b border-gray-800">
+            <CategoryFilter />
           </section>
 
           {/* Advanced Filters Section */}

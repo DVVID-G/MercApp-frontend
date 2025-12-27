@@ -16,6 +16,8 @@ export interface FilterState {
   sort: { field: SortField; direction: 'asc' | 'desc' };
   search: string;
   priceRange: PriceRange;
+  brands: string[];
+  categories: string[];
   page: number;
   pageSize: number;
 }
@@ -76,6 +78,8 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   sort: { field: 'date', direction: 'desc' },
   search: '',
   priceRange: { min: null, max: null },
+  brands: [],
+  categories: [],
   page: 1,
   pageSize: 20,
 };

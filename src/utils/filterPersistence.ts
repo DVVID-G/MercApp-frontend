@@ -19,6 +19,8 @@ interface StoredFilterState {
     min: number | null;
     max: number | null;
   };
+  brands: string[];
+  categories: string[];
   // Note: page is NOT persisted (always starts at 1)
   _version: number; // Schema version for migration
   _timestamp: string; // Last save timestamp
@@ -37,6 +39,8 @@ export const serializeFilters = (filters: FilterState): string => {
     sort: filters.sort,
     search: filters.search,
     priceRange: filters.priceRange,
+    brands: filters.brands,
+    categories: filters.categories,
     _version: 1,
     _timestamp: new Date().toISOString(),
   };
@@ -65,6 +69,8 @@ export const deserializeFilters = (json: string): Partial<FilterState> | null =>
       sort: stored.sort as FilterState['sort'],
       search: stored.search,
       priceRange: stored.priceRange,
+      brands: stored.brands || [],
+      categories: stored.categories || [],
       page: 1, // Always reset to page 1
       pageSize: 20, // Default page size
     };

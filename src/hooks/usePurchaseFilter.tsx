@@ -33,7 +33,7 @@ export function useFilteredPurchases(purchases: Purchase[]) {
   const { state, dispatch } = useFilters();
 
   const filteredSorted = useMemo(() => {
-    const { dateRange, search, priceRange, sort } = state;
+    const { dateRange, search, priceRange, brands, categories, sort } = state;
 
     let list = purchases.slice();
 
@@ -61,6 +61,16 @@ export function useFilteredPurchases(purchases: Purchase[]) {
     }
     if (priceRange.max != null) {
       list = list.filter((p) => p.total <= (priceRange.max ?? Infinity));
+    }
+
+    // Brand filter (OR logic: purchase matches if contains at least one product with any selected brand)
+    if (brands.length > 0) {
+      list = list.filter((p) => p.products.some((product) => brands.includes(product.marca)));
+    }
+
+    // Category filter (OR logic: purchase matches if contains at least one product with any selected category)
+    if (categories.length > 0) {
+      list = list.filter((p) => p.products.some((product) => categories.includes(product.category)));
     }
 
     // Sort
