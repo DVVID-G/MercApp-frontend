@@ -51,7 +51,6 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
   const listRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const listboxId = useId();
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   const selectedOption = options.find(opt => opt.value === value);
   const currentValueIndex = options.findIndex(opt => opt.value === value);
@@ -249,18 +248,29 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="absolute z-50 w-full mt-2 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-2xl"
+            className="absolute z-50 w-full mt-2 rounded-[12px] shadow-2xl"
+            style={{ pointerEvents: 'auto' }}
           >
             <div
               ref={listRef}
               role="listbox"
               id={listboxId}
-              className="overflow-y-auto max-h-60 scrollbar-thin rounded-[12px]"
+              className="bg-gray-950 border-2 border-gray-800 rounded-[12px]"
               style={{
+                maxHeight: '240px',
+                height: 'auto',
+                overflowY: 'scroll',
+                overflowX: 'hidden',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain',
-                maxHeight: '240px'
+                cursor: 'default',
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+              }}
+              onWheel={(e) => {
+                e.stopPropagation();
               }}
             >
               {options.map((option, index) => {
@@ -277,55 +287,19 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                     role="option"
                     aria-selected={isSelected}
                     tabIndex={isFocused ? 0 : -1}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       handleSelect(option.value);
                     }}
-                    onTouchStart={(e) => {
-                      // Store touch start position to detect scroll vs tap
-                      if (e.touches.length === 1) {
-                        const touch = e.touches[0];
-                        touchStartRef.current = {
-                          x: touch.clientX,
-                          y: touch.clientY,
-                          time: Date.now()
-                        };
-                      }
-                    }}
-                    onTouchMove={(e) => {
-                      // Don't prevent default - allow scroll to work naturally
-                      // Just track movement to distinguish tap from scroll
-                      if (touchStartRef.current && e.touches.length === 1) {
-                        const touch = e.touches[0];
-                        const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-                        
-                        // If vertical movement > 10px, mark as scroll (don't trigger click)
-                        if (deltaY > 10) {
-                          touchStartRef.current = null; // Mark as scroll, cancel tap
-                        }
-                      }
-                    }}
-                    onTouchEnd={(e) => {
-                      // Only trigger click if it was a tap (not a scroll)
-                      if (touchStartRef.current) {
-                        const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartRef.current.x);
-                        const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartRef.current.y);
-                        const deltaTime = Date.now() - touchStartRef.current.time;
-                        
-                        // If movement was small and quick, it's a tap
-                        if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
-                          e.preventDefault();
-                          handleSelect(option.value);
-                        }
-                        touchStartRef.current = null;
-                      }
-                    }}
                     onKeyDown={(e) => {
-                      // Handle keyboard navigation on individual buttons
                       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || 
                           e.key === 'Home' || e.key === 'End' || 
                           e.key === 'Enter' || e.key === 'Escape') {
                         handleListKeyDown(e);
                       }
+                    }}
+                    style={{
+                      touchAction: 'manipulation',
                     }}
                     className={`
                       w-full px-4 py-3 text-left font-medium text-white
