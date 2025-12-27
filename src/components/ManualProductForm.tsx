@@ -50,10 +50,73 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const scrollTimeoutRef = useRef<number | null>(null);
   const listboxId = useId();
 
+  // Create infinite scroll effect by triplicating options
+  const infiniteOptions = [...options, ...options, ...options];
+  
   const selectedOption = options.find(opt => opt.value === value);
   const currentValueIndex = options.findIndex(opt => opt.value === value);
+
+  // Momentum-aware infinite scroll with 150ms settle time
+  useEffect(() => {
+    if (!isOpen || !listRef.current) return;
+
+    const container = listRef.current;
+
+    const handleScroll = () => {
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Wait 150ms after scroll stops before repositioning
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        
+        // Use requestAnimationFrame for smooth repositioning
+        requestAnimationFrame(() => {
+          if (!container) return;
+          
+          const scrollTop = container.scrollTop;
+          const scrollHeight = container.scrollHeight;
+          const sectionHeight = scrollHeight / 3;
+          
+          // Reposition if we're in the first or last section (with 30% buffer for smooth experience)
+          // First section: 0 to sectionHeight (trigger at 30% = 0.3 * sectionHeight)
+          // Middle section: sectionHeight to 2*sectionHeight (safe zone, no repositioning)
+          // Last section: 2*sectionHeight to 3*sectionHeight (trigger at 70% = 2.7 * sectionHeight)
+          
+          if (scrollTop < sectionHeight * 0.3) {
+            // In top section - jump down to equivalent position in middle section
+            container.scrollTop = scrollTop + sectionHeight;
+          } else if (scrollTop > sectionHeight * 2.7) {
+            // In bottom section - jump up to equivalent position in middle section
+            container.scrollTop = scrollTop - sectionHeight;
+          }
+        });
+      }, 150);
+    };
+
+    // Add passive listener for better performance
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Initialize scroll position to middle section on open
+    requestAnimationFrame(() => {
+      if (container) {
+        const sectionHeight = container.scrollHeight / 3;
+        // Position at start of middle section
+        container.scrollTop = sectionHeight;
+      }
+    });
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -99,31 +162,25 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
     }
   }, [selectedIndex, isOpen]);
 
-  // Focus management: focus on selected option when dropdown opens
+  // Focus management: focus on middle section option when dropdown opens
   useEffect(() => {
-    if (isOpen && selectedIndex >= 0 && optionRefs.current[selectedIndex]) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        optionRefs.current[selectedIndex]?.focus();
-      }, 0);
-      return () => clearTimeout(timer);
+    if (isOpen && selectedIndex >= 0) {
+      // Calculate middle section index
+      const middleIndex = options.length + selectedIndex;
+      // Focus without scrolling - infinite scroll handles positioning
+      requestAnimationFrame(() => {
+        if (optionRefs.current[middleIndex]) {
+          optionRefs.current[middleIndex]?.focus({ preventScroll: true });
+        }
+      });
     }
-  }, [isOpen, selectedIndex]);
+  }, [isOpen, selectedIndex, options.length]);
 
   const handleSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
     setSelectedIndex(-1);
-  };
-
-  const scrollToOption = (index: number) => {
-    if (listRef.current && optionRefs.current[index]) {
-      const element = optionRefs.current[index];
-      if (element) {
-        element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      }
-    }
-  };
+  }
 
   const handleTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (disabled) return;
@@ -168,7 +225,11 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
         e.stopPropagation();
         setSelectedIndex((prev) => {
           const nextIndex = prev < options.length - 1 ? prev + 1 : 0;
-          scrollToOption(nextIndex);
+          // Always scroll to middle section version
+          const middleIndex = options.length + nextIndex;
+          if (listRef.current && optionRefs.current[middleIndex]) {
+            optionRefs.current[middleIndex]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          }
           return nextIndex;
         });
         break;
@@ -177,7 +238,11 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
         e.stopPropagation();
         setSelectedIndex((prev) => {
           const nextIndex = prev > 0 ? prev - 1 : options.length - 1;
-          scrollToOption(nextIndex);
+          // Always scroll to middle section version
+          const middleIndex = options.length + nextIndex;
+          if (listRef.current && optionRefs.current[middleIndex]) {
+            optionRefs.current[middleIndex]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          }
           return nextIndex;
         });
         break;
@@ -198,14 +263,21 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
         e.preventDefault();
         e.stopPropagation();
         setSelectedIndex(0);
-        scrollToOption(0);
+        // Scroll to middle section version of first item
+        if (listRef.current && optionRefs.current[options.length]) {
+          optionRefs.current[options.length]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
         break;
       case 'End': {
         e.preventDefault();
         e.stopPropagation();
         const lastIndex = options.length - 1;
         setSelectedIndex(lastIndex);
-        scrollToOption(lastIndex);
+        // Scroll to middle section version of last item
+        const middleLastIndex = options.length + lastIndex;
+        if (listRef.current && optionRefs.current[middleLastIndex]) {
+          optionRefs.current[middleLastIndex]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
         break;
       }
     }
@@ -251,11 +323,18 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
             className="absolute z-50 w-full mt-2 rounded-[12px] shadow-2xl"
             style={{ pointerEvents: 'auto' }}
           >
+            {/* Top fade indicator */}
+            <div 
+              className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-950 to-transparent pointer-events-none z-10 rounded-t-[12px]"
+              aria-hidden="true"
+            />
+            
             <div
               ref={listRef}
               role="listbox"
               id={listboxId}
-              className="bg-gray-950 border-2 border-gray-800 rounded-[12px]"
+              aria-label="Lista de opciones con scroll infinito"
+              className="bg-gray-950 border-2 border-gray-800 rounded-[12px] relative"
               style={{
                 maxHeight: '240px',
                 height: 'auto',
@@ -265,6 +344,11 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain',
                 cursor: 'default',
+                scrollBehavior: 'auto',
+                scrollPaddingTop: '48px',
+                scrollPaddingBottom: '48px',
+                contain: 'layout style paint',
+                willChange: isOpen ? 'scroll-position' : 'auto',
               }}
               onTouchStart={(e) => {
                 e.stopPropagation();
@@ -273,20 +357,30 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                 e.stopPropagation();
               }}
             >
-              {options.map((option, index) => {
+              {infiniteOptions.map((option, infiniteIndex) => {
+                // Calculate section: 0=top, 1=middle, 2=bottom
+                const sectionIndex = Math.floor(infiniteIndex / options.length);
+                const localIndex = infiniteIndex % options.length;
                 const isSelected = option.value === value;
-                const isFocused = selectedIndex === index;
+                const isFocused = selectedIndex === localIndex;
+                
+                // Only middle section is fully accessible
+                const isMiddleSection = sectionIndex === 1;
+                const shouldBeHidden = !isMiddleSection;
                 
                 return (
                   <button
-                    key={option.value}
+                    key={`${option.value}-${infiniteIndex}`}
                     ref={(el) => {
-                      optionRefs.current[index] = el;
+                      optionRefs.current[infiniteIndex] = el;
                     }}
                     type="button"
                     role="option"
-                    aria-selected={isSelected}
-                    tabIndex={isFocused ? 0 : -1}
+                    aria-selected={isSelected && isMiddleSection}
+                    aria-hidden={shouldBeHidden}
+                    aria-setsize={options.length}
+                    aria-posinset={localIndex + 1}
+                    tabIndex={isFocused && isMiddleSection ? 0 : -1}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleSelect(option.value);
@@ -300,23 +394,24 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                     }}
                     style={{
                       touchAction: 'manipulation',
+                      contain: 'layout style paint',
                     }}
                     className={`
                       w-full px-4 py-3 text-left font-medium text-white
                       transition-all duration-150 ease-in-out
-                      ${isFocused 
+                      ${isFocused && isMiddleSection
                         ? isSelected
                           ? 'bg-secondary-gold bg-opacity-20 border-l-4 border-secondary-gold'
                           : 'bg-secondary-gold bg-opacity-10 border-l-2 border-secondary-gold'
-                        : isSelected
+                        : isSelected && isMiddleSection
                           ? 'bg-gray-950 hover:bg-gray-800'
                           : 'bg-gray-950 hover:bg-gray-800'
                       }
-                      ${isFocused 
+                      ${isFocused && isMiddleSection
                         ? 'ring-2 ring-secondary-gold ring-offset-1 ring-offset-gray-950' 
                         : ''
                       }
-                      ${index !== 0 ? 'border-t border-gray-800' : ''}
+                      ${infiniteIndex % options.length !== 0 ? 'border-t border-gray-800' : ''}
                       hover:pl-5
                       focus:outline-none focus:ring-2 focus:ring-secondary-gold
                     `}
@@ -328,6 +423,12 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                 );
               })}
             </div>
+            
+            {/* Bottom fade indicator */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-950 to-transparent pointer-events-none z-10 rounded-b-[12px]"
+              aria-hidden="true"
+            />
           </motion.div>
         )}
       </AnimatePresence>

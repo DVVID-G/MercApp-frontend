@@ -138,6 +138,7 @@ export default function App() {
           <Dashboard 
             purchases={purchases}
             onCreatePurchase={() => setCurrentScreen('create-purchase')}
+            onViewDetail={handleViewPurchaseDetail}
             isOffline={isOffline}
           />
         );
@@ -173,7 +174,7 @@ export default function App() {
           />
         );
       default:
-        return <Dashboard purchases={purchases} onCreatePurchase={() => setCurrentScreen('create-purchase')} isOffline={isOffline} />;
+        return <Dashboard purchases={purchases} onCreatePurchase={() => setCurrentScreen('create-purchase')} onViewDetail={handleViewPurchaseDetail} isOffline={isOffline} />;
     }
   };
 

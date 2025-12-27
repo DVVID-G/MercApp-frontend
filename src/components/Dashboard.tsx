@@ -7,10 +7,11 @@ import { Purchase } from '../App';
 interface DashboardProps {
   purchases: Purchase[];
   onCreatePurchase: () => void;
+  onViewDetail: (purchase: Purchase) => void;
   isOffline: boolean;
 }
 
-export function Dashboard({ purchases, onCreatePurchase, isOffline }: DashboardProps) {
+export function Dashboard({ purchases, onCreatePurchase, onViewDetail, isOffline }: DashboardProps) {
   // Calculate statistics
   const totalSpent = purchases.reduce((sum, p) => sum + p.total, 0);
   const totalItems = purchases.reduce((sum, p) => sum + p.itemCount, 0);
@@ -143,23 +144,48 @@ export function Dashboard({ purchases, onCreatePurchase, isOffline }: DashboardP
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 + index * 0.1 }}
+                  className="w-full"
                 >
-                  <Card>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white mb-1">
-                          {new Date(purchase.date).toLocaleDateString('es-ES', { 
-                            day: 'numeric', 
-                            month: 'long' 
-                          })}
-                        </p>
-                        <small className="text-gray-400">{purchase.itemCount} productos</small>
+                  <Card onClick={() => onViewDetail(purchase)} className="w-full">
+                    <div className="flex items-center justify-between w-full gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="text-white">
+                            {new Date(purchase.date).toLocaleDateString('es-ES', { 
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </p>
+                          {!purchase.synced && (
+                            <span className="px-2 py-0.5 bg-warning/10 border border-warning/30 rounded-[4px] text-warning text-xs flex-shrink-0">
+                              Pendiente
+                            </span>
+                          )}
+                        </div>
+                        <small className="text-gray-400 block mb-1">
+                          {purchase.itemCount} {purchase.itemCount === 1 ? 'producto' : 'productos'}
+                        </small>
+                        
+                        {/* Product preview */}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {purchase.products.slice(0, 3).map(p => (
+                            <span key={p.id} className="px-2 py-1 bg-gray-800 rounded-[4px] text-xs text-gray-400">
+                              {p.name}
+                            </span>
+                          ))}
+                          {purchase.products.length > 3 && (
+                            <span className="px-2 py-1 bg-gray-800 rounded-[4px] text-xs text-gray-400">
+                              +{purchase.products.length - 3}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-secondary-gold">${purchase.total.toFixed(2)}</p>
-                        {!purchase.synced && (
-                          <small className="text-warning text-xs">Sin sincronizar</small>
-                        )}
+                      
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-secondary-gold text-xl whitespace-nowrap">
+                          ${purchase.total.toFixed(2)}
+                        </p>
                       </div>
                     </div>
                   </Card>
