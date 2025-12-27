@@ -12,6 +12,8 @@ type Action =
   | { type: 'setSort'; payload: FilterState['sort'] } // Sets sort criteria and resets to page 1
   | { type: 'setSearch'; payload: string } // Sets search query and resets to page 1
   | { type: 'setPriceRange'; payload: FilterState['priceRange'] } // Sets price range filter and resets to page 1
+  | { type: 'setBrands'; payload: string[] } // Sets selected brands and resets to page 1
+  | { type: 'setCategories'; payload: string[] } // Sets selected categories and resets to page 1
   | { type: 'setPage'; payload: number } // Changes current page (does not reset filters)
   | { type: 'reset' } // Resets all filters to default state
   | { type: 'setPageSize'; payload: number } // Changes page size (does not reset filters)
@@ -39,6 +41,12 @@ const reducer = (state: FilterState, action: Action): FilterState => {
     case 'setPriceRange':
       // Set price range and reset pagination to page 1
       return { ...state, priceRange: action.payload, page: 1 };
+    case 'setBrands':
+      // Set selected brands and reset pagination to page 1
+      return { ...state, brands: action.payload, page: 1 };
+    case 'setCategories':
+      // Set selected categories and reset pagination to page 1
+      return { ...state, categories: action.payload, page: 1 };
     case 'setPage':
       // Change current page without affecting filters
       return { ...state, page: action.payload };

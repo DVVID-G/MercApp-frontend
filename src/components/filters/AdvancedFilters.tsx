@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useFilters } from '../../hooks/useFilters';
 import { useDebounce } from 'use-debounce';
-import { Search, DollarSign, X } from 'lucide-react';
+import { Search, DollarSign, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const AdvancedFilters: React.FC = () => {
@@ -9,6 +9,7 @@ export const AdvancedFilters: React.FC = () => {
   const [localSearch, setLocalSearch] = useState(state.search);
   const [debouncedSearch] = useDebounce(localSearch, 300);
   const [priceError, setPriceError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Update filter when debounced search changes
   React.useEffect(() => {
@@ -54,9 +55,15 @@ export const AdvancedFilters: React.FC = () => {
   const activeFilterCount = (hasSearch ? 1 : 0) + (hasPriceRange ? 1 : 0);
 
   return (
-    <div className="space-y-4">
-      {/* Header with active filter count */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-2" role="group" aria-labelledby="advanced-filters-title">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between mb-3"
+        aria-expanded={isExpanded}
+        aria-controls="advanced-filters-content"
+        id="advanced-filters-title"
+      >
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium text-white">Filtros avanzados</h3>
           {activeFilterCount > 0 && (
@@ -65,9 +72,24 @@ export const AdvancedFilters: React.FC = () => {
             </span>
           )}
         </div>
-      </div>
+        <ChevronDown
+          className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+            isExpanded ? 'transform rotate-180' : ''
+          }`}
+        />
+      </button>
 
-      {/* Search Input */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            id="advanced-filters-content"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden space-y-4"
+          >
+            {/* Search Input */}
       <div>
         <label htmlFor="search-input" className="block text-sm font-medium text-gray-400 mb-3">
           Buscar por producto
@@ -176,7 +198,10 @@ export const AdvancedFilters: React.FC = () => {
             </motion.p>
           )}
         </AnimatePresence>
-      </div>
+          </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

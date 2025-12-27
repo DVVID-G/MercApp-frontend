@@ -3,7 +3,7 @@ import { useFilters } from '../../hooks/useFilters';
 import { DATE_PRESETS } from '../../utils/filterPresets';
 import { parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Search, DollarSign, X, Filter } from 'lucide-react';
+import { Calendar, Search, DollarSign, X, Filter, Tag, Folder } from 'lucide-react';
 import { FilterSummaryTag } from '../../types/filters';
 
 export const FilterSummary: React.FC = () => {
@@ -55,6 +55,28 @@ export const FilterSummary: React.FC = () => {
         onRemove: () => dispatch({ type: 'setPriceRange', payload: { min: null, max: null } }),
       });
     }
+
+    // Brand tags
+    state.brands.forEach((brand) => {
+      tags.push({
+        id: `brand-${brand}`,
+        category: 'Marca',
+        value: brand,
+        icon: 'Tag',
+        onRemove: () => dispatch({ type: 'setBrands', payload: state.brands.filter((b) => b !== brand) }),
+      });
+    });
+
+    // Category tags
+    state.categories.forEach((category) => {
+      tags.push({
+        id: `category-${category}`,
+        category: 'Categoría',
+        value: category,
+        icon: 'Folder',
+        onRemove: () => dispatch({ type: 'setCategories', payload: state.categories.filter((c) => c !== category) }),
+      });
+    });
 
     return tags;
   };
@@ -118,6 +140,8 @@ function getIconComponent(iconName: string) {
     Search,
     DollarSign,
     Filter,
+    Tag,
+    Folder,
   };
   return icons[iconName] || Filter;
 }
