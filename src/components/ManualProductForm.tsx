@@ -51,9 +51,58 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
   const listRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const listboxId = useId();
+  const isScrollingRef = useRef(false);
 
+  // Create infinite scroll by triplicating options
+  const infiniteOptions = [...options, ...options, ...options];
+  
   const selectedOption = options.find(opt => opt.value === value);
   const currentValueIndex = options.findIndex(opt => opt.value === value);
+
+  // Handle infinite scroll wrap-around
+  useEffect(() => {
+    if (!isOpen || !listRef.current) return;
+
+    const handleScroll = () => {
+      if (isScrollingRef.current) return;
+      
+      const container = listRef.current;
+      if (!container) return;
+
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+      const sectionHeight = scrollHeight / 3;
+
+      // If scrolled to top section, jump to middle section
+      if (scrollTop < sectionHeight * 0.1) {
+        isScrollingRef.current = true;
+        container.scrollTop = scrollTop + sectionHeight;
+        setTimeout(() => { isScrollingRef.current = false; }, 50);
+      }
+      // If scrolled to bottom section, jump to middle section
+      else if (scrollTop > sectionHeight * 2.9) {
+        isScrollingRef.current = true;
+        container.scrollTop = scrollTop - sectionHeight;
+        setTimeout(() => { isScrollingRef.current = false; }, 50);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    
+    // Start at middle section
+    const timer = setTimeout(() => {
+      if (container) {
+        const sectionHeight = container.scrollHeight / 3;
+        container.scrollTop = sectionHeight + (currentValueIndex >= 0 ? currentValueIndex * 48 : 0);
+      }
+    }, 50);
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      clearTimeout(timer);
+    };
+  }, [isOpen, currentValueIndex]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -281,15 +330,20 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
                 e.stopPropagation();
               }}
             >
-              {options.map((option, index) => {
+              {infiniteOptions.map((option, index) => {
                 const isSelected = option.value === value;
-                const isFocused = selectedIndex === index;
+                const sectionIndex = Math.floor(index / options.length);
+                const localIndex = index % options.length;
+                const isFocused = selectedIndex === localIndex && sectionIndex === 1;
                 
                 return (
                   <button
-                    key={option.value}
+                    key={`${option.value}-${index}`}
                     ref={(el) => {
-                      optionRefs.current[index] = el;
+                      if (sectionIndex === 1) {
+                        optionRefs.current[localIndex] = el;
+                      }
+                    }}
                     }}
                     type="button"
                     role="option"
