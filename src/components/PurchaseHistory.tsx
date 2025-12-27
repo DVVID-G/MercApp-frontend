@@ -1,13 +1,17 @@
-import { useState } from 'react';
-import { Search, ShoppingCart, Calendar, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import React from 'react';
+import { Search, ShoppingCart, Calendar, TrendingUp, Filter } from 'lucide-react';
 import { Card } from './Card';
 import { Input } from './Input';
 import { Purchase } from '../App';
 import { motion } from 'motion/react';
 import { FiltersProvider, useFilters } from '../hooks/useFilters';
 import { FilterPanel } from './filters/FilterPanel';
+import { FilterSummary } from './filters/FilterSummary';
 import { PaginationControls } from './filters/PaginationControls';
+import { FilterErrorBoundary } from './filters/FilterErrorBoundary';
 import { useFilteredPurchases } from '../hooks/usePurchaseFilter';
+import { parseURLParams, serializeToURL } from '../utils/filterPersistence';
 
 interface PurchaseHistoryProps {
   purchases: Purchase[];
@@ -28,8 +32,58 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
 }
 
 function InnerPurchaseHistory({ purchases, onViewDetail, showFilters, setShowFilters }: PurchaseHistoryProps & { showFilters: boolean; setShowFilters: (v: boolean) => void }) {
-  const { state } = useFilters();
+  const { state, dispatch } = useFilters();
   const { filtered, total, hasMore } = useFilteredPurchases(purchases);
+  const [newlyLoadedStartIndex, setNewlyLoadedStartIndex] = useState<number | null>(null);
+  const purchaseRefs = React.useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Read URL params on mount (URL takes precedence over localStorage)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.toString()) {
+      const urlFilters = parseURLParams(urlParams);
+      if (Object.keys(urlFilters).length > 0) {
+        dispatch({ type: 'restoreFromStorage', payload: urlFilters });
+      }
+    }
+  }, []); // Only on mount
+
+  // Update URL params when filters change
+  useEffect(() => {
+    const queryString = serializeToURL(state);
+    const newURL = queryString
+      ? `${window.location.pathname}?${queryString}`
+      : window.location.pathname;
+    
+    // Use replaceState to avoid adding to history
+    window.history.replaceState({}, '', newURL);
+  }, [state]);
+
+  // Handle smooth scroll to first new item after loading more
+  const handleLoadMore = (previousCount: number) => {
+    if (previousCount < filtered.length) {
+      // Find the first newly loaded purchase
+      const firstNewIndex = previousCount;
+      setNewlyLoadedStartIndex(firstNewIndex);
+      
+      // Scroll to first new item smoothly
+      setTimeout(() => {
+        const firstNewPurchase = filtered[firstNewIndex];
+        if (firstNewPurchase) {
+          const element = purchaseRefs.current.get(firstNewPurchase.id);
+          if (element) {
+            element.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          }
+        }
+        // Reset after animation completes
+        setTimeout(() => setNewlyLoadedStartIndex(null), 500);
+      }, 100);
+    }
+  };
 
   const groupedByMonth = filtered.reduce((groups, purchase) => {
     const date = new Date(purchase.date);
@@ -87,16 +141,58 @@ function InnerPurchaseHistory({ purchases, onViewDetail, showFilters, setShowFil
           className="mb-6 space-y-3"
         >
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowFilters((s) => !s)} className="px-4 py-2 rounded-[8px] border border-gray-800">Filtros</button>
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[PurchaseHistory] Filter button clicked, current showFilters:', showFilters);
+                setShowFilters((s) => {
+                  const newValue = !s;
+                  console.log('[PurchaseHistory] Setting showFilters to:', newValue);
+                  return newValue;
+                });
+                // Blur the button immediately to prevent aria-hidden warning
+                if (!showFilters) {
+                  requestAnimationFrame(() => {
+                    (document.activeElement as HTMLElement)?.blur();
+                  });
+                }
+              }} 
+              className="px-4 py-2 rounded-[8px] border border-gray-800 hover:border-gray-700 transition-colors flex items-center gap-2"
+              aria-label="Abrir panel de filtros"
+              type="button"
+            >
+              <Filter className="w-4 h-4" />
+              Filtros
+            </button>
             <div className="flex-1" />
-            <FilterSummaryPlaceholder />
           </div>
-          {showFilters && (
-            <div className="mt-3">
-              <FilterPanel purchases={purchases} />
-            </div>
-          )}
+          
+          {/* Filter Summary */}
+          <FilterErrorBoundary>
+            <FilterSummary />
+          </FilterErrorBoundary>
+          
+          {/* Aria-live region for results count updates */}
+          <div 
+            aria-live="polite" 
+            aria-atomic="true" 
+            className="sr-only"
+          >
+            {filtered.length > 0 && (
+              <span>
+                {filtered.length} {filtered.length === 1 ? 'compra encontrada' : 'compras encontradas'}
+                {total !== purchases.length && ` de ${total} compras filtradas`}
+              </span>
+            )}
+          </div>
         </motion.div>
+        
+        {/* Filter Panel - Render outside motion.div to avoid portal conflicts */}
+        <FilterErrorBoundary>
+          {/* Drawer must always be mounted for Vaul to work properly */}
+          <FilterPanel isOpen={showFilters} onClose={() => setShowFilters(false)} />
+        </FilterErrorBoundary>
 
         {/* Purchases List */}
         {filtered.length === 0 ? (
@@ -121,15 +217,35 @@ function InnerPurchaseHistory({ purchases, onViewDetail, showFilters, setShowFil
                 </div>
 
                 <div className="space-y-3">
-                  {monthPurchases.map((purchase, index) => (
-                    <motion.div
-                      key={purchase.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + groupIndex * 0.1 + index * 0.05 }}
-                      className="w-full"
-                    >
-                      <Card onClick={() => onViewDetail(purchase)} className="w-full">
+                  {monthPurchases.map((purchase, index) => {
+                    // Calculate global index for fade-in animation on newly loaded items
+                    const globalIndex = filtered.findIndex(p => p.id === purchase.id);
+                    const isNewlyLoaded = newlyLoadedStartIndex !== null && globalIndex >= newlyLoadedStartIndex;
+                    
+                    return (
+                      <motion.div
+                        key={purchase.id}
+                        ref={(el) => {
+                          if (el) {
+                            purchaseRefs.current.set(purchase.id, el);
+                          } else {
+                            purchaseRefs.current.delete(purchase.id);
+                          }
+                        }}
+                        initial={isNewlyLoaded ? { opacity: 0, y: 20 } : { opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0, y: 0 }}
+                        transition={
+                          isNewlyLoaded
+                            ? {
+                                duration: 0.4,
+                                ease: 'easeOut',
+                                delay: (globalIndex - (newlyLoadedStartIndex || 0)) * 0.05
+                              }
+                            : { delay: 0.4 + groupIndex * 0.1 + index * 0.05 }
+                        }
+                        className="w-full"
+                      >
+                        <Card onClick={() => onViewDetail(purchase)} className="w-full">
                         <div className="flex items-center justify-between w-full gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -171,11 +287,14 @@ function InnerPurchaseHistory({ purchases, onViewDetail, showFilters, setShowFil
                         </div>
                       </Card>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               </motion.div>
             ))}
-            <PaginationControls purchases={purchases} />
+            <FilterErrorBoundary>
+              <PaginationControls purchases={purchases} onLoadMore={handleLoadMore} />
+            </FilterErrorBoundary>
           </div>
         )}
       </div>
@@ -183,7 +302,3 @@ function InnerPurchaseHistory({ purchases, onViewDetail, showFilters, setShowFil
   );
 }
 
-function FilterSummaryPlaceholder() {
-  // simple placeholder kept inside PurchaseHistory header
-  return <div className="text-sm text-gray-400">Filtros activos</div>;
-}

@@ -3,6 +3,32 @@ import { Purchase } from '../App';
 import { useFilters } from './useFilters';
 import { parseISO, isAfter, isBefore } from 'date-fns';
 
+/**
+ * Hook that applies filters and sorting to a purchase array.
+ * Returns filtered, sorted, and paginated purchases.
+ * 
+ * Filtering logic:
+ * - Date range: Filters purchases within the specified date range (inclusive)
+ * - Search: Case-insensitive search by product name (matches if any product in purchase matches)
+ * - Price range: Filters purchases within min/max price range (inclusive)
+ * 
+ * Sorting logic:
+ * - Date: Sorts by purchase date (newest/oldest first)
+ * - Amount: Sorts by total purchase amount (highest/lowest first)
+ * - Items: Sorts by item count (most/least first)
+ * 
+ * Pagination:
+ * - Returns only the first `page * pageSize` items
+ * - Automatically resets to page 1 when filters change
+ * 
+ * @param purchases - Array of all purchases to filter
+ * @returns Object with filtered purchases, total count, hasMore flag, and pagination controls
+ * 
+ * @example
+ * ```tsx
+ * const { filtered, total, hasMore, loadMore } = useFilteredPurchases(purchases);
+ * ```
+ */
 export function useFilteredPurchases(purchases: Purchase[]) {
   const { state, dispatch } = useFilters();
 
