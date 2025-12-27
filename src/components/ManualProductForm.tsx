@@ -249,13 +249,13 @@ function CustomSelect({ value, onChange, options, disabled = false, placeholder,
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="absolute z-50 w-full mt-2 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-2xl overflow-hidden"
+            className="absolute z-50 w-full mt-2 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-2xl"
           >
             <div
               ref={listRef}
               role="listbox"
               id={listboxId}
-              className="overflow-y-auto max-h-60 scrollbar-thin"
+              className="overflow-y-auto max-h-60 scrollbar-thin rounded-[12px]"
               style={{
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',
