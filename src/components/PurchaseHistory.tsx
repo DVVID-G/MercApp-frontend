@@ -4,6 +4,10 @@ import { Card } from './Card';
 import { Input } from './Input';
 import { Purchase } from '../App';
 import { motion } from 'motion/react';
+import { FiltersProvider, useFilters } from '../hooks/useFilters';
+import { FilterPanel } from './filters/FilterPanel';
+import { PaginationControls } from './filters/PaginationControls';
+import { useFilteredPurchases } from '../hooks/usePurchaseFilter';
 
 interface PurchaseHistoryProps {
   purchases: Purchase[];
@@ -11,25 +15,23 @@ interface PurchaseHistoryProps {
 }
 
 export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
-
-  // Filter and sort purchases
-  let filteredPurchases = purchases.filter(p => {
-    const searchLower = searchQuery.toLowerCase();
-    return p.products.some(prod => prod.name.toLowerCase().includes(searchLower));
-  });
-
-  if (sortBy === 'date') {
-    filteredPurchases = [...filteredPurchases].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  } else {
-    filteredPurchases = [...filteredPurchases].sort((a, b) => b.total - a.total);
-  }
+  // local UI state
+  const [showFilters, setShowFilters] = useState(false);
 
   // Group by month
-  const groupedByMonth = filteredPurchases.reduce((groups, purchase) => {
+  // Use FiltersProvider internally for this view
+  return (
+    <FiltersProvider>
+      <InnerPurchaseHistory purchases={purchases} onViewDetail={onViewDetail} showFilters={showFilters} setShowFilters={setShowFilters} />
+    </FiltersProvider>
+  );
+}
+
+function InnerPurchaseHistory({ purchases, onViewDetail, showFilters, setShowFilters }: PurchaseHistoryProps & { showFilters: boolean; setShowFilters: (v: boolean) => void }) {
+  const { state } = useFilters();
+  const { filtered, total, hasMore } = useFilteredPurchases(purchases);
+
+  const groupedByMonth = filtered.reduce((groups, purchase) => {
     const date = new Date(purchase.date);
     const monthKey = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     
@@ -84,50 +86,24 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
           transition={{ delay: 0.2 }}
           className="mb-6 space-y-3"
         >
-          <Input
-            label="Buscar"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por producto..."
-            icon={Search}
-          />
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSortBy('date')}
-              className={`flex-1 px-4 py-2 rounded-[8px] border transition-colors ${
-                sortBy === 'date' 
-                  ? 'bg-secondary-gold/10 border-secondary-gold text-secondary-gold' 
-                  : 'bg-gray-950 border-gray-800 text-gray-400'
-              }`}
-            >
-              <Calendar className="w-4 h-4 inline mr-2" />
-              Por fecha
-            </button>
-            <button
-              onClick={() => setSortBy('amount')}
-              className={`flex-1 px-4 py-2 rounded-[8px] border transition-colors ${
-                sortBy === 'amount' 
-                  ? 'bg-secondary-gold/10 border-secondary-gold text-secondary-gold' 
-                  : 'bg-gray-950 border-gray-800 text-gray-400'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4 inline mr-2" />
-              Por monto
-            </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowFilters((s) => !s)} className="px-4 py-2 rounded-[8px] border border-gray-800">Filtros</button>
+            <div className="flex-1" />
+            <FilterSummaryPlaceholder />
           </div>
+          {showFilters && (
+            <div className="mt-3">
+              <FilterPanel purchases={purchases} />
+            </div>
+          )}
         </motion.div>
 
         {/* Purchases List */}
-        {filteredPurchases.length === 0 ? (
+        {filtered.length === 0 ? (
           <Card className="text-center py-12">
             <ShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 mb-2">
-              {searchQuery ? 'No se encontraron resultados' : 'No tienes compras registradas'}
-            </p>
-            <small className="text-gray-600">
-              {searchQuery ? 'Intenta con otros términos de búsqueda' : 'Crea tu primera compra para comenzar'}
-            </small>
+            <p className="text-gray-400 mb-2">No hay compras que coincidan con los filtros</p>
+            <small className="text-gray-600">Ajusta filtros o limpia para ver todas las compras</small>
           </Card>
         ) : (
           <div className="space-y-6">
@@ -190,9 +166,7 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
                           </div>
                           
                           <div className="text-right flex-shrink-0">
-                            <p className="text-secondary-gold text-xl whitespace-nowrap">
-                              ${purchase.total.toFixed(2)}
-                            </p>
+                            <p className="text-secondary-gold text-xl whitespace-nowrap">${purchase.total.toFixed(2)}</p>
                           </div>
                         </div>
                       </Card>
@@ -201,9 +175,15 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
                 </div>
               </motion.div>
             ))}
+            <PaginationControls purchases={purchases} />
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function FilterSummaryPlaceholder() {
+  // simple placeholder kept inside PurchaseHistory header
+  return <div className="text-sm text-gray-400">Filtros activos</div>;
 }
