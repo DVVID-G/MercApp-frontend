@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Filter } from 'lucide-react';
 import { searchProducts, getProductByBarcode, Product } from '../services/product.service';
+import { ProductFiltersProvider, useProductFilters } from '../hooks/useProductFilters';
+import { useFilteredProducts } from '../hooks/useFilteredProducts';
+import { ProductFilterPanel } from './filters/ProductFilterPanel';
+import { ProductFilterSummary } from './filters/ProductFilterSummary';
+import { generateFilterTags } from '../utils/productFilterTags';
+import { getActiveFilterCount } from '../types/productFilters';
 
 export type SearchMode = 'barcode' | 'name';
 
@@ -12,7 +19,7 @@ export interface ProductSearchInputProps {
   autoFocus?: boolean;
 }
 
-export function ProductSearchInput({
+function ProductSearchInputInner({
   onProductSelect,
   onNoResults,
   placeholder = 'Buscar producto...',
@@ -21,12 +28,19 @@ export function ProductSearchInput({
 }: ProductSearchInputProps) {
   const [searchMode, setSearchMode] = useState<SearchMode>(initialMode);
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [allSuggestions, setAllSuggestions] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Filter hooks
+  const { state: filters, dispatch } = useProductFilters();
+  const suggestions = useFilteredProducts(allSuggestions, filters);
+  const filterTags = generateFilterTags(filters, dispatch);
+  const activeFilterCount = getActiveFilterCount(filters);
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -46,19 +60,19 @@ export function ProductSearchInput({
       debounceTimerRef.current = setTimeout(async () => {
         setIsLoading(true);
         try {
-          const results = await searchProducts({ q: query, limit: 10 });
-          setSuggestions(results);
+          const results = await searchProducts({ q: query, limit: 100 }); // Get more to allow filtering
+          setAllSuggestions(results);
           setShowSuggestions(true);
           setSelectedIndex(-1);
         } catch (error) {
           console.error('Error searching products:', error);
-          setSuggestions([]);
+          setAllSuggestions([]);
         } finally {
           setIsLoading(false);
         }
       }, 300);
     } else {
-      setSuggestions([]);
+      setAllSuggestions([]);
       setShowSuggestions(false);
     }
 
@@ -118,7 +132,7 @@ export function ProductSearchInput({
   const handleSelectProduct = (product: Product) => {
     onProductSelect(product);
     setQuery('');
-    setSuggestions([]);
+    setAllSuggestions([]);
     setShowSuggestions(false);
     setSelectedIndex(-1);
   };
@@ -126,7 +140,7 @@ export function ProductSearchInput({
   const toggleSearchMode = () => {
     setSearchMode((prev) => (prev === 'barcode' ? 'name' : 'barcode'));
     setQuery('');
-    setSuggestions([]);
+    setAllSuggestions([]);
     setShowSuggestions(false);
     setSelectedIndex(-1);
     inputRef.current?.focus();
@@ -134,7 +148,7 @@ export function ProductSearchInput({
 
   const clearSearch = () => {
     setQuery('');
-    setSuggestions([]);
+    setAllSuggestions([]);
     setShowSuggestions(false);
     setSelectedIndex(-1);
     inputRef.current?.focus();
@@ -151,6 +165,17 @@ export function ProductSearchInput({
 
   return (
     <div className="relative w-full">
+      {/* Filter Summary - Show when filters are active and in name search mode */}
+      {searchMode === 'name' && filterTags.length > 0 && (
+        <ProductFilterSummary
+          tags={filterTags}
+          totalResults={suggestions.length}
+          totalProducts={allSuggestions.length}
+          onClearAll={() => dispatch({ type: 'reset' })}
+          isLoading={isLoading}
+        />
+      )}
+
       {/* Search Mode Toggle */}
       <div className="flex gap-2 mb-4 bg-gray-900 p-1 rounded-[12px] border-2 border-gray-800">
         <button
@@ -177,8 +202,8 @@ export function ProductSearchInput({
         </button>
       </div>
 
-      {/* Search Input */}
-      <div className="relative">
+      {/* Search Input with Filter Button (Name Mode Only) */}
+      <div className="relative flex gap-2">
         <input
           ref={inputRef}
           type={searchMode === 'barcode' ? 'text' : 'search'}
@@ -188,9 +213,40 @@ export function ProductSearchInput({
           placeholder={
             searchMode === 'barcode' ? 'Escanea o ingresa código de barras' : placeholder
           }
-          className="w-full px-4 py-3 bg-gray-950 text-white border-2 border-gray-800 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold placeholder:text-gray-600 transition-colors"
+          className="flex-1 px-4 py-3 bg-gray-950 text-white border-2 border-gray-800 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold placeholder:text-gray-600 transition-colors"
           disabled={isLoading}
         />
+        {searchMode === 'name' && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('[ProductSearchInput] Filter button clicked, current state:', isFilterPanelOpen);
+              
+              // CRITICAL: Blur the button BEFORE updating state to prevent aria-hidden conflict
+              // The Drawer applies aria-hidden immediately when opening, so we must remove focus first
+              const button = e.currentTarget;
+              button.blur();
+              
+              // Use requestAnimationFrame to ensure blur completes before state update
+              requestAnimationFrame(() => {
+                setIsFilterPanelOpen(true);
+                console.log('[ProductSearchInput] State updated to true after blur');
+              });
+            }}
+            className="px-4 py-2 rounded-[8px] border border-gray-800 hover:border-gray-700 transition-colors flex items-center gap-2"
+            aria-label="Abrir filtros"
+          >
+            <Filter className="w-4 h-4" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-secondary-gold text-gray-950 text-xs font-semibold">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Loading Indicator or Clear Button */}
         {isLoading ? (
@@ -259,11 +315,47 @@ export function ProductSearchInput({
       {/* No Results Message */}
       {searchMode === 'name' && showSuggestions && suggestions.length === 0 && query.trim().length >= 2 && !isLoading && (
         <div className="absolute z-50 w-full mt-2 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-lg p-4 text-center">
-          <p className="text-gray-400 text-sm">No se encontraron productos</p>
-          <p className="text-gray-600 text-xs mt-1">Intenta con otro término de búsqueda</p>
+          <p className="text-gray-400 text-sm">
+            {allSuggestions.length === 0 
+              ? 'No se encontraron productos'
+              : 'No hay productos que coincidan con los filtros seleccionados'}
+          </p>
+          <p className="text-gray-600 text-xs mt-1">
+            {allSuggestions.length === 0
+              ? 'Intenta con otro término de búsqueda'
+              : 'Ajusta los filtros o intenta con otro término'}
+          </p>
+          {allSuggestions.length > 0 && (
+            <button
+              onClick={() => dispatch({ type: 'reset' })}
+              className="mt-3 px-4 py-2 rounded-[8px] bg-gray-900 border-2 border-gray-800 text-gray-300 hover:bg-gray-800 transition-colors text-sm"
+            >
+              Limpiar filtros
+            </button>
+          )}
         </div>
       )}
+
+      {/* Filter Panel - Always render, but only show when open */}
+      {/* Render outside the relative container to avoid modal conflicts */}
+      {searchMode === 'name' && (
+        <ProductFilterPanel
+          isOpen={isFilterPanelOpen}
+          onClose={() => {
+            console.log('[ProductSearchInput] Closing filter panel');
+            setIsFilterPanelOpen(false);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+export function ProductSearchInput(props: ProductSearchInputProps) {
+  return (
+    <ProductFiltersProvider>
+      <ProductSearchInputInner {...props} />
+    </ProductFiltersProvider>
   );
 }
 
