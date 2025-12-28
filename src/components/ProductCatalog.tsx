@@ -6,7 +6,7 @@ import { ProductFilterPanel } from './filters/ProductFilterPanel';
 import { ProductFilterSummary } from './filters/ProductFilterSummary';
 import { generateFilterTags } from '../utils/productFilterTags';
 import { getActiveFilterCount } from '../types/productFilters';
-import { listProducts, Product } from '../services/product.service';
+import { listProducts, CatalogProduct } from '../services/product.service';
 import { Card } from './Card';
 
 /**
@@ -15,7 +15,7 @@ import { Card } from './Card';
  */
 function ProductCatalogInner() {
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<CatalogProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { state: filters, dispatch } = useProductFilters();
   const filteredProducts = useFilteredProducts(allProducts, filters);

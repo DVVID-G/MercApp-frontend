@@ -16,7 +16,7 @@ import { ScannerOverlay } from './scanner/ScannerOverlay';
 import { ScannerInstructions } from './scanner/ScannerInstructions';
 import { Card } from './Card';
 import { Button } from './Button';
-import { getProductByBarcode, type Product } from '../services/product.service';
+import { getProductByBarcode, type CatalogProduct } from '../services/product.service';
 import type { ScannerVisualState } from '../types/scanner.types';
 
 // Development logging
@@ -31,7 +31,7 @@ interface BarcodeScannerProps {
   /** @deprecated Use onProductFound/onProductNotFound instead */
   onScan?: (code: string) => void;
   /** Called when product is found in database */
-  onProductFound?: (product: Product) => void;
+  onProductFound?: (product: CatalogProduct) => void;
   /** Called when product is not found (404) - barcode is passed for manual creation */
   onProductNotFound?: (barcode: string) => void;
   /** Called when product lookup fails due to network/other errors (not 404) */

@@ -4,9 +4,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { manualProductSchema, ManualProductFormData } from '../validators/forms';
 import { Input } from './Input';
+import { Barcode, Scale } from 'lucide-react';
 
 export interface ManualProductFormProps {
-  onSubmit: (data: ManualProductFormData) => void;
+  onSubmit: (data: ManualProductFormData & { productType: 'regular' | 'fruver' }) => void;
   onCancel: () => void;
   isLoading?: boolean;
   initialData?: Partial<ManualProductFormData>;
@@ -443,6 +444,9 @@ export function ManualProductForm({
   isLoading = false,
   initialData = {},
 }: ManualProductFormProps) {
+  // Estado para el tipo de producto
+  const [productType, setProductType] = useState<'regular' | 'fruver'>('regular');
+  
   const {
     register,
     handleSubmit,
@@ -461,6 +465,11 @@ export function ManualProductForm({
       categoria: initialData.categoria || 'Otros',
     },
   });
+
+  const handleFormSubmit = (data: ManualProductFormData) => {
+    // Agregar el tipo de producto a los datos
+    onSubmit({ ...data, productType });
+  };
 
   const price = watch('price');
   const packageSize = watch('packageSize');
@@ -488,7 +497,67 @@ export function ManualProductForm({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+        {/* SELECTOR DE TIPO DE PRODUCTO */}
+        <div className="mb-6">
+          <label className="text-gray-400 text-sm mb-3 block">
+            Tipo de Producto <span className="text-secondary-gold">*</span>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Opción Regular */}
+            <button
+              type="button"
+              onClick={() => setProductType('regular')}
+              disabled={isLoading}
+              className={`
+                relative flex flex-col items-center justify-center gap-2 p-4 rounded-[12px] border-2 transition-all
+                ${productType === 'regular' 
+                  ? 'border-secondary-gold bg-secondary-gold/10 text-white' 
+                  : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'
+                }
+                ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              `}
+            >
+              {productType === 'regular' && (
+                <motion.div
+                  layoutId="product-type-indicator"
+                  className="absolute inset-0 border-2 border-secondary-gold rounded-[12px]"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <Barcode className="w-6 h-6" />
+              <span className="text-sm font-semibold">Regular</span>
+              <span className="text-xs opacity-70">Con código</span>
+            </button>
+
+            {/* Opción Fruver */}
+            <button
+              type="button"
+              onClick={() => setProductType('fruver')}
+              disabled={isLoading}
+              className={`
+                relative flex flex-col items-center justify-center gap-2 p-4 rounded-[12px] border-2 transition-all
+                ${productType === 'fruver' 
+                  ? 'border-secondary-gold bg-secondary-gold/10 text-white' 
+                  : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'
+                }
+                ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              `}
+            >
+              {productType === 'fruver' && (
+                <motion.div
+                  layoutId="product-type-indicator"
+                  className="absolute inset-0 border-2 border-secondary-gold rounded-[12px]"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <Scale className="w-6 h-6" />
+              <span className="text-sm font-semibold">Fruver</span>
+              <span className="text-xs opacity-70">Peso variable</span>
+            </button>
+          </div>
+        </div>
+
         {/* Name */}
         <Input
           label="Nombre del Producto *"
@@ -509,9 +578,9 @@ export function ManualProductForm({
 
         {/* Price and Package Size Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Price */}
+          {/* Price / Precio de Referencia */}
           <Input
-            label="Precio *"
+            label={productType === 'fruver' ? 'Precio de Referencia *' : 'Precio *'}
             type="number"
             step="0.01"
             placeholder="0.00"
@@ -520,12 +589,12 @@ export function ManualProductForm({
             {...register('price', { valueAsNumber: true })}
           />
 
-          {/* Package Size */}
+          {/* Package Size / Peso de Referencia */}
           <Input
-            label="Tamaño del Paquete *"
+            label={productType === 'fruver' ? 'Peso de Referencia (g) *' : 'Tamaño del Paquete *'}
             type="number"
             step="0.01"
-            placeholder="1.0"
+            placeholder={productType === 'fruver' ? 'Gramos' : '1.0'}
             error={errors.packageSize?.message}
             disabled={isLoading}
             {...register('packageSize', { valueAsNumber: true })}
@@ -567,13 +636,41 @@ export function ManualProductForm({
           </div>
         )}
 
-        {/* Barcode */}
+        {/* Barcode - Opcional para Fruver, requerido para Regular */}
         <Input
-          label="Código de Barras *"
-          placeholder="Ej: 7790001234567"
+          label={productType === 'fruver' ? 'Código de Barras (Opcional)' : 'Código de Barras *'}
+          placeholder={productType === 'fruver' ? 'Opcional para fruver' : 'Ej: 7790001234567'}
           error={errors.barcode?.message}
           disabled={isLoading}
-          {...register('barcode')}
+          {...register('barcode', { 
+            required: productType === 'regular' ? 'El código de barras es obligatorio' : false,
+            minLength: productType === 'regular' 
+              ? { value: 8, message: 'El código de barras debe tener al menos 8 caracteres' }
+              : undefined,
+            validate: (value) => {
+              if (productType === 'regular') {
+                if (!value || value.trim().length === 0) {
+                  return 'El código de barras es obligatorio para productos regulares';
+                }
+                if (value.length < 8) {
+                  return 'El código de barras debe tener al menos 8 caracteres';
+                }
+                if (value.length > 20) {
+                  return 'El código de barras no puede tener más de 20 caracteres';
+                }
+              }
+              // Para fruver, si se proporciona, debe tener al menos 8 caracteres
+              if (productType === 'fruver' && value && value.trim().length > 0) {
+                if (value.length < 8) {
+                  return 'El código de barras debe tener al menos 8 caracteres';
+                }
+                if (value.length > 20) {
+                  return 'El código de barras no puede tener más de 20 caracteres';
+                }
+              }
+              return true;
+            }
+          })}
         />
 
         {/* Categoria */}
@@ -618,7 +715,7 @@ export function ManualProductForm({
                 Guardando...
               </span>
             ) : (
-              'Crear Producto'
+              productType === 'fruver' ? '✅ Crear Producto Fruver' : '✅ Crear Producto'
             )}
           </button>
         </div>

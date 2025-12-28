@@ -30,7 +30,7 @@ export const manualProductSchema = z.object({
   price: z.number({ message: 'El precio debe ser un número' }).min(1, 'El precio debe ser mayor a 0'),
   packageSize: z.number({ message: 'El tamaño debe ser un número' }).min(1, 'El tamaño debe ser mayor a 0'),
   umd: z.string().min(1, 'La unidad de medida es requerida'),
-  barcode: z.string().min(3, 'El código de barras es requerido'),
+  barcode: z.string().optional(), // Opcional por defecto, se valida condicionalmente en el componente
   categoria: z.string().min(1, 'La categoría es requerida'),
 });
 

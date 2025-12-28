@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Filter } from 'lucide-react';
-import { searchProducts, getProductByBarcode, Product } from '../services/product.service';
+import { Filter, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { searchProducts, getProductByBarcode } from '../services/product.service';
 import { ProductFiltersProvider, useProductFilters } from '../hooks/useProductFilters';
 import { useFilteredProducts } from '../hooks/useFilteredProducts';
 import { ProductFilterPanel } from './filters/ProductFilterPanel';
 import { ProductFilterSummary } from './filters/ProductFilterSummary';
 import { generateFilterTags } from '../utils/productFilterTags';
 import { getActiveFilterCount } from '../types/productFilters';
+import { CatalogProduct, isProductRegular } from '../types/product';
 
 export type SearchMode = 'barcode' | 'name';
 
 export interface ProductSearchInputProps {
-  onProductSelect: (product: Product) => void;
+  onProductSelect: (product: CatalogProduct) => void;
   onNoResults?: () => void;
   placeholder?: string;
   mode?: SearchMode;
   autoFocus?: boolean;
+  hideModeToggle?: boolean; // Hide the barcode/name toggle
+  compact?: boolean; // Compact layout for modals
 }
 
 function ProductSearchInputInner({
@@ -25,16 +29,19 @@ function ProductSearchInputInner({
   placeholder = 'Buscar producto...',
   mode: initialMode = 'barcode',
   autoFocus = false,
+  hideModeToggle = false,
+  compact = false,
 }: ProductSearchInputProps) {
   const [searchMode, setSearchMode] = useState<SearchMode>(initialMode);
   const [query, setQuery] = useState('');
-  const [allSuggestions, setAllSuggestions] = useState<Product[]>([]);
+  const [searchQuery, setSearchQuery] = useState(''); // Query used for actual search
+  const [allSuggestions, setAllSuggestions] = useState<CatalogProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Filter hooks
   const { state: filters, dispatch } = useProductFilters();
@@ -48,40 +55,48 @@ function ProductSearchInputInner({
     }
   }, [autoFocus]);
 
-  // Debounced search for name mode
+  // Perform search when searchQuery changes (triggered by button or Enter)
   useEffect(() => {
-    if (searchMode === 'name' && query.trim().length >= 2) {
-      // Clear previous timer
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-
-      // Set new timer
-      debounceTimerRef.current = setTimeout(async () => {
-        setIsLoading(true);
-        try {
-          const results = await searchProducts({ q: query, limit: 100 }); // Get more to allow filtering
+    if (searchMode === 'name' && searchQuery.trim().length >= 1) {
+      // Perform search inline to avoid dependency issues
+      const searchTerm = searchQuery.trim();
+      setIsLoading(true);
+      setSearchError(null); // Clear previous error
+      searchProducts({ q: searchTerm, limit: 100 })
+        .then((results) => {
           setAllSuggestions(results);
           setShowSuggestions(true);
           setSelectedIndex(-1);
-        } catch (error) {
+          setSearchError(null); // Clear error on success
+        })
+        .catch((error) => {
           console.error('Error searching products:', error);
+          const errorMessage = error.response?.data?.message || 
+                              error.message || 
+                              'Error al buscar productos. Verifica tu conexión e intenta nuevamente.';
+          setSearchError(errorMessage);
           setAllSuggestions([]);
-        } finally {
+          setShowSuggestions(false);
+          toast.error('❌ Error al buscar productos', {
+            description: errorMessage
+          });
+        })
+        .finally(() => {
           setIsLoading(false);
-        }
-      }, 300);
-    } else {
+        });
+    } else if (searchMode === 'name' && searchQuery === '') {
+      // Clear results if search query is empty
       setAllSuggestions([]);
       setShowSuggestions(false);
+      setSearchError(null); // Clear error when query is cleared
     }
+  }, [searchQuery, searchMode]);
 
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [query, searchMode]);
+  const handleSearch = () => {
+    if (query.trim().length >= 1) {
+      setSearchQuery(query.trim());
+    }
+  };
 
   const handleBarcodeSearch = async (barcode: string) => {
     if (!barcode.trim()) return;
@@ -111,17 +126,23 @@ function ProductSearchInputInner({
       }
     } else {
       // Name search mode - keyboard navigation
-      if (e.key === 'ArrowDown') {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        setSelectedIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
+        // If there's a selected suggestion, select it
+        if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+          handleSelectProduct(suggestions[selectedIndex]);
+        } else {
+          // Otherwise, perform search
+          handleSearch();
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (showSuggestions && suggestions.length > 0) {
+          setSelectedIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
+        }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIndex((prev) => Math.max(prev - 1, -1));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (selectedIndex >= 0 && suggestions[selectedIndex]) {
-          handleSelectProduct(suggestions[selectedIndex]);
-        }
       } else if (e.key === 'Escape') {
         setShowSuggestions(false);
         setSelectedIndex(-1);
@@ -129,7 +150,7 @@ function ProductSearchInputInner({
     }
   };
 
-  const handleSelectProduct = (product: Product) => {
+  const handleSelectProduct = (product: CatalogProduct) => {
     onProductSelect(product);
     setQuery('');
     setAllSuggestions([]);
@@ -148,9 +169,11 @@ function ProductSearchInputInner({
 
   const clearSearch = () => {
     setQuery('');
+    setSearchQuery('');
     setAllSuggestions([]);
     setShowSuggestions(false);
     setSelectedIndex(-1);
+    setSearchError(null); // Clear error when clearing search
     inputRef.current?.focus();
   };
 
@@ -164,7 +187,7 @@ function ProductSearchInputInner({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" style={{ isolation: 'isolate' }}>
       {/* Filter Summary - Show when filters are active and in name search mode */}
       {searchMode === 'name' && filterTags.length > 0 && (
         <ProductFilterSummary
@@ -176,132 +199,246 @@ function ProductSearchInputInner({
         />
       )}
 
-      {/* Search Mode Toggle */}
-      <div className="flex gap-2 mb-4 bg-gray-900 p-1 rounded-[12px] border-2 border-gray-800">
-        <button
-          type="button"
-          onClick={toggleSearchMode}
-          className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-[8px] transition-all duration-200 ${
-            searchMode === 'barcode'
-              ? 'bg-gray-950 text-white shadow-lg border-2 border-gray-700'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          🔍 Código de Barras
-        </button>
-        <button
-          type="button"
-          onClick={toggleSearchMode}
-          className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-[8px] transition-all duration-200 ${
-            searchMode === 'name'
-              ? 'bg-gray-950 text-white shadow-lg border-2 border-gray-700'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          📄 Buscar por Nombre
-        </button>
+      {/* Search Mode Toggle - Hidden if hideModeToggle is true */}
+      {!hideModeToggle && (
+        <div className="flex gap-2 mb-4 bg-gray-900 p-1 rounded-[12px] border-2 border-gray-800">
+          <button
+            type="button"
+            onClick={toggleSearchMode}
+            className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-[8px] transition-all duration-200 ${
+              searchMode === 'barcode'
+                ? 'bg-gray-950 text-white shadow-lg border-2 border-gray-700'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            🔍 Código de Barras
+          </button>
+          <button
+            type="button"
+            onClick={toggleSearchMode}
+            className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-[8px] transition-all duration-200 ${
+              searchMode === 'name'
+                ? 'bg-gray-950 text-white shadow-lg border-2 border-gray-700'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            📄 Buscar por Nombre
+          </button>
+        </div>
+      )}
+
+      {/* Search Input - Full Width */}
+      <div className="mb-3">
+        <div className="relative">
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              searchMode === 'barcode' ? 'Escanea o ingresa código de barras' : placeholder
+            }
+            className="w-full px-4 py-3 pr-12 bg-gray-950 text-white border-2 border-gray-800 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold placeholder:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:hidden [&::-ms-clear]:hidden"
+            disabled={isLoading}
+            aria-label={searchMode === 'barcode' ? 'Código de barras' : 'Buscar producto por nombre'}
+            aria-describedby={searchMode === 'name' ? 'search-hint' : undefined}
+            style={{ paddingRight: query && !isLoading ? '2.75rem' : '1rem' }}
+          />
+          
+          {/* Clear Button (inside input, only when there's text and not loading) */}
+          {query && !isLoading && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-all duration-200 p-1 hover:bg-gray-800 rounded-[6px] z-10 flex items-center justify-center"
+              aria-label="Limpiar búsqueda"
+              onMouseDown={(e) => e.preventDefault()}
+              style={{ right: '0.75rem' }}
+            >
+              <X className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+          )}
+          
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-secondary-gold border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Search Input with Filter Button (Name Mode Only) */}
-      <div className="relative flex gap-2">
-        <input
-          ref={inputRef}
-          type={searchMode === 'barcode' ? 'text' : 'search'}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            searchMode === 'barcode' ? 'Escanea o ingresa código de barras' : placeholder
-          }
-          className="flex-1 px-4 py-3 bg-gray-950 text-white border-2 border-gray-800 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:border-secondary-gold placeholder:text-gray-600 transition-colors"
-          disabled={isLoading}
-        />
-        {searchMode === 'name' && (
+      {/* Action Buttons Row (Name Mode Only) */}
+      {searchMode === 'name' && (
+        <div className="flex gap-2 mb-3">
+          {/* Search Button */}
+          <motion.button
+            type="button"
+            onClick={handleSearch}
+            disabled={isLoading || !query.trim()}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex-1 px-4 py-3 bg-secondary-gold text-primary-black rounded-[12px] font-semibold hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            aria-label="Buscar productos"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-primary-black border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Buscando...</span>
+              </>
+            ) : (
+              <>
+                <Search className="w-5 h-5" />
+                <span className="text-sm font-semibold">Buscar</span>
+              </>
+            )}
+          </motion.button>
+
+          {/* Filter Button */}
           <button
             type="button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('[ProductSearchInput] Filter button clicked, current state:', isFilterPanelOpen);
               
-              // CRITICAL: Blur the button BEFORE updating state to prevent aria-hidden conflict
-              // The Drawer applies aria-hidden immediately when opening, so we must remove focus first
               const button = e.currentTarget;
               button.blur();
               
-              // Use requestAnimationFrame to ensure blur completes before state update
               requestAnimationFrame(() => {
                 setIsFilterPanelOpen(true);
-                console.log('[ProductSearchInput] State updated to true after blur');
               });
             }}
-            className="px-4 py-2 rounded-[8px] border border-gray-800 hover:border-gray-700 transition-colors flex items-center gap-2"
-            aria-label="Abrir filtros"
+            className="px-4 py-3 rounded-[12px] border-2 border-gray-800 hover:border-secondary-gold transition-colors flex items-center justify-center gap-2 bg-gray-950 flex-shrink-0"
+            aria-label="Abrir filtros de búsqueda"
           >
-            <Filter className="w-4 h-4" />
-            Filtros
+            <Filter className="w-5 h-5" />
             {activeFilterCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-secondary-gold text-gray-950 text-xs font-semibold">
+              <span className="px-2 py-0.5 rounded-full bg-secondary-gold text-gray-950 text-xs font-semibold min-w-[20px] text-center">
                 {activeFilterCount}
               </span>
             )}
           </button>
-        )}
+        </div>
+      )}
 
-        {/* Loading Indicator or Clear Button */}
-        {isLoading ? (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-5 h-5 border-2 border-secondary-gold border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : query && (
-          <button
-            type="button"
-            onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1.5 hover:bg-gray-800 rounded-full"
-            aria-label="Limpiar búsqueda"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
+      {/* Search Hint (Name Mode Only) */}
+      {searchMode === 'name' && !showSuggestions && (
+        <p id="search-hint" className="text-xs text-gray-500 mt-2 mb-2">
+          Escribe el nombre del producto y presiona "Buscar" o Enter
+        </p>
+      )}
 
       {/* Suggestions Dropdown (Name Search Mode Only) */}
       <AnimatePresence>
         {searchMode === 'name' && showSuggestions && suggestions.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="absolute z-50 w-full mt-2 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-2xl max-h-64 overflow-hidden"
+            className="relative w-full mt-3 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-2xl overflow-hidden"
+            style={{
+              maxHeight: compact ? '50vh' : '60vh',
+            }}
           >
-            <div className="overflow-y-auto max-h-64">
+            {/* Results count header - sticky */}
+            <div className="sticky top-0 z-10 px-4 py-3 bg-gray-900 border-b-2 border-gray-800">
+              <p className="text-sm text-gray-300 font-semibold">
+                {suggestions.length} {suggestions.length === 1 ? 'producto encontrado' : 'productos encontrados'}
+              </p>
+            </div>
+            
+            {/* Scrollable results list */}
+            <div 
+              className="overflow-y-auto"
+              role="listbox"
+              aria-label="Resultados de búsqueda"
+            style={{
+              maxHeight: compact ? 'calc(50vh - 45px)' : 'calc(60vh - 45px)',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
+              scrollPaddingTop: '4px',
+              scrollPaddingBottom: '4px',
+            }}
+          >
               {suggestions.map((product, index) => (
                 <button
                   key={product._id}
                   type="button"
                   onClick={() => handleSelectProduct(product)}
-                  className={`w-full px-4 py-3 text-left transition-all duration-150 hover:pl-5 ${
-                    index === selectedIndex ? 'bg-secondary-gold bg-opacity-20 border-l-4 border-secondary-gold' : 'bg-gray-950 hover:bg-gray-800'
-                  } ${index > 0 ? 'border-t border-gray-800' : ''}`}
+                  role="option"
+                  aria-selected={index === selectedIndex}
+                  className={`w-full px-4 py-4 text-left transition-all duration-150 ${
+                    index === selectedIndex 
+                      ? 'bg-secondary-gold bg-opacity-15 border-l-4 border-secondary-gold' 
+                      : 'bg-gray-950 hover:bg-gray-900 active:bg-gray-900'
+                  } ${index > 0 ? 'border-t border-gray-800' : ''} focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:ring-offset-2 focus:ring-offset-gray-950`}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  onFocus={() => setSelectedIndex(index)}
                 >
-                  <div className="flex justify-between items-start gap-3">
+                  <div className="flex justify-between items-start gap-4">
+                    {/* Product Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-white truncate">
-                        {highlightMatch(product.name, query)}
+                      {/* Product Name - Primary Text */}
+                      <div className="font-semibold text-white text-base mb-2.5 leading-snug break-words">
+                        {highlightMatch(product.name, searchQuery || query)}
                       </div>
-                      <div className="text-sm text-gray-400 truncate mt-0.5">
-                        {highlightMatch(product.marca, query)} • {product.packageSize} {product.umd}
+                      
+                      {/* Secondary Info - Better Contrast */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-gray-300 font-medium truncate max-w-[140px]">
+                            {highlightMatch(product.marca, searchQuery || query)}
+                          </span>
+                          <span className="text-gray-600 text-sm" aria-hidden="true">•</span>
+                          <span className="text-sm text-gray-300 whitespace-nowrap">
+                            {isProductRegular(product) 
+                              ? `${product.packageSize} ${product.umd}`
+                              : `${product.referenceWeight}${product.umd}`
+                            }
+                          </span>
+                        </div>
+                        
+                        {/* Category Badge - Better Contrast */}
+                        {product.categoria && (
+                          <div>
+                            <span className="inline-block px-2.5 py-1 bg-gray-800 border border-gray-700 rounded-[6px] text-xs font-medium text-gray-200">
+                              {product.categoria}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="font-bold text-secondary-gold text-base sm:text-lg">${product.price.toFixed(2)}</div>
-                      {product.pum && (
-                        <div className="text-xs text-gray-500 whitespace-nowrap">
-                          ${product.pum.toFixed(2)}/{product.umd}
-                        </div>
+                    
+                    {/* Price Info - Right Aligned */}
+                    <div className="text-right flex-shrink-0 ml-2 min-w-[90px]">
+                      {isProductRegular(product) ? (
+                        <>
+                          {/* Main Price - High Contrast */}
+                          <div className="font-bold text-secondary-gold text-lg leading-tight whitespace-nowrap mb-1">
+                            ${product.price.toFixed(2)}
+                          </div>
+                          {/* PUM - Better Contrast */}
+                          {product.pum && (
+                            <div className="text-xs text-gray-300 whitespace-nowrap font-medium">
+                              ${product.pum.toFixed(2)}/{product.umd}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {/* Reference Price - High Contrast */}
+                          <div className="font-bold text-secondary-gold text-lg leading-tight whitespace-nowrap mb-1">
+                            ${product.referencePrice.toFixed(2)}
+                          </div>
+                          {/* PUM - Better Contrast */}
+                          {product.pum && (
+                            <div className="text-xs text-gray-300 whitespace-nowrap font-medium">
+                              ${product.pum.toFixed(2)}/g
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -312,28 +449,73 @@ function ProductSearchInputInner({
         )}
       </AnimatePresence>
 
+      {/* Error Message */}
+      {searchMode === 'name' && searchError && !isLoading && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="relative w-full mt-3 bg-error/10 border-2 border-error/20 rounded-[12px] shadow-lg p-6 text-center"
+        >
+          <div className="text-4xl mb-4" aria-hidden="true">⚠️</div>
+          <h3 className="text-error text-lg font-semibold mb-2">
+            Error al buscar productos
+          </h3>
+          <p className="text-gray-300 text-sm mb-5 leading-relaxed">
+            {searchError}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              clearSearch();
+            }}
+            className="px-5 py-2.5 rounded-[8px] bg-gray-900 border-2 border-gray-700 text-white hover:bg-gray-800 hover:border-secondary-gold focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:ring-offset-2 focus:ring-offset-gray-950 transition-all text-sm font-semibold"
+          >
+            Limpiar búsqueda
+          </button>
+        </motion.div>
+      )}
+
       {/* No Results Message */}
-      {searchMode === 'name' && showSuggestions && suggestions.length === 0 && query.trim().length >= 2 && !isLoading && (
-        <div className="absolute z-50 w-full mt-2 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-lg p-4 text-center">
-          <p className="text-gray-400 text-sm">
+      {searchMode === 'name' && showSuggestions && suggestions.length === 0 && searchQuery.trim().length >= 1 && !isLoading && !searchError && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="relative w-full mt-3 bg-gray-950 border-2 border-gray-800 rounded-[12px] shadow-lg p-6 text-center"
+        >
+          <div className="text-4xl mb-4" aria-hidden="true">🔍</div>
+          <h3 className="text-white text-lg font-semibold mb-2">
             {allSuggestions.length === 0 
               ? 'No se encontraron productos'
-              : 'No hay productos que coincidan con los filtros seleccionados'}
-          </p>
-          <p className="text-gray-600 text-xs mt-1">
+              : 'No hay productos que coincidan con los filtros'}
+          </h3>
+          <p className="text-gray-300 text-sm mb-5 leading-relaxed">
             {allSuggestions.length === 0
-              ? 'Intenta con otro término de búsqueda'
-              : 'Ajusta los filtros o intenta con otro término'}
+              ? `No hay resultados para "${searchQuery || query}". Intenta con otro término de búsqueda.`
+              : 'Ajusta los filtros o intenta con otro término de búsqueda'}
           </p>
           {allSuggestions.length > 0 && (
             <button
+              type="button"
               onClick={() => dispatch({ type: 'reset' })}
-              className="mt-3 px-4 py-2 rounded-[8px] bg-gray-900 border-2 border-gray-800 text-gray-300 hover:bg-gray-800 transition-colors text-sm"
+              className="px-5 py-2.5 rounded-[8px] bg-gray-900 border-2 border-gray-700 text-white hover:bg-gray-800 hover:border-secondary-gold focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:ring-offset-2 focus:ring-offset-gray-950 transition-all text-sm font-semibold"
             >
               Limpiar filtros
             </button>
           )}
-        </div>
+          {allSuggestions.length === 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                clearSearch();
+              }}
+              className="px-5 py-2.5 rounded-[8px] bg-gray-900 border-2 border-gray-700 text-white hover:bg-gray-800 hover:border-secondary-gold focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:ring-offset-2 focus:ring-offset-gray-950 transition-all text-sm font-semibold"
+            >
+              Limpiar búsqueda
+            </button>
+          )}
+        </motion.div>
       )}
 
       {/* Filter Panel - Always render, but only show when open */}

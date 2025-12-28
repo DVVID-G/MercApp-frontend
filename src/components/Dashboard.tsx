@@ -3,15 +3,17 @@ import { Card } from './Card';
 import { Button } from './Button';
 import { motion } from 'motion/react';
 import { Purchase } from '../App';
+import { CartButton } from './CartButton';
 
 interface DashboardProps {
   purchases: Purchase[];
   onCreatePurchase: () => void;
   onViewDetail: (purchase: Purchase) => void;
+  onOpenCart: () => void;
   isOffline: boolean;
 }
 
-export function Dashboard({ purchases, onCreatePurchase, onViewDetail, isOffline }: DashboardProps) {
+export function Dashboard({ purchases, onCreatePurchase, onViewDetail, onOpenCart, isOffline }: DashboardProps) {
   // Calculate statistics
   const totalSpent = purchases.reduce((sum, p) => sum + p.total, 0);
   const totalItems = purchases.reduce((sum, p) => sum + p.itemCount, 0);
@@ -23,13 +25,17 @@ export function Dashboard({ purchases, onCreatePurchase, onViewDetail, isOffline
     <div className="min-h-screen pb-24">
       {/* Header */}
       <div className="bg-gradient-to-b from-gray-950 to-primary-black px-6 pt-12 pb-8">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h1 className="mb-2">Dashboard</h1>
-          <p className="text-gray-400">Resumen de tus compras</p>
-        </motion.div>
+        <div className="flex items-start justify-between gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1"
+          >
+            <h1 className="mb-2">Dashboard</h1>
+            <p className="text-gray-400">Resumen de tus compras</p>
+          </motion.div>
+          <CartButton onClick={onOpenCart} />
+        </div>
 
         {/* Offline Banner */}
         {isOffline && (

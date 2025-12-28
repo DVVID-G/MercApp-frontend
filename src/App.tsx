@@ -8,6 +8,7 @@ import { PurchaseDetail } from './components/PurchaseDetail';
 import { Profile } from './components/Profile';
 import { BottomNav } from './components/BottomNav';
 import { useAuth } from './context/AuthContext';
+import { PurchaseProvider } from './context/PurchaseContext';
 import { getPurchases } from './services/purchases.service';
 
 export type Screen = 
@@ -30,6 +31,7 @@ export interface Product {
   packageSize: number;
   pum?: number;
   umd: string;
+  productType?: 'regular' | 'fruver'; // Optional for backward compatibility
 }
 
 export interface Purchase {
@@ -139,6 +141,7 @@ export default function App() {
             purchases={purchases}
             onCreatePurchase={() => setCurrentScreen('create-purchase')}
             onViewDetail={handleViewPurchaseDetail}
+            onOpenCart={() => setCurrentScreen('create-purchase')}
             isOffline={isOffline}
           />
         );
@@ -158,6 +161,7 @@ export default function App() {
           <PurchaseHistory 
             purchases={purchases}
             onViewDetail={handleViewPurchaseDetail}
+            onOpenCart={() => setCurrentScreen('create-purchase')}
           />
         );
       case 'purchase-detail':
@@ -171,22 +175,25 @@ export default function App() {
         return (
           <Profile 
             onLogout={handleLogout}
+            onOpenCart={() => setCurrentScreen('create-purchase')}
           />
         );
       default:
-        return <Dashboard purchases={purchases} onCreatePurchase={() => setCurrentScreen('create-purchase')} onViewDetail={handleViewPurchaseDetail} isOffline={isOffline} />;
+        return <Dashboard purchases={purchases} onCreatePurchase={() => setCurrentScreen('create-purchase')} onViewDetail={handleViewPurchaseDetail} onOpenCart={() => setCurrentScreen('create-purchase')} isOffline={isOffline} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-primary-black text-white max-w-[390px] mx-auto relative">
-      {renderScreen()}
-      {isAuthenticated && (
-        <BottomNav 
-          currentScreen={currentScreen} 
-          onNavigate={handleNavigate}
-        />
-      )}
-    </div>
+    <PurchaseProvider>
+      <div className="min-h-screen bg-primary-black text-white max-w-[390px] mx-auto relative">
+        {renderScreen()}
+        {isAuthenticated && (
+          <BottomNav 
+            currentScreen={currentScreen} 
+            onNavigate={handleNavigate}
+          />
+        )}
+      </div>
+    </PurchaseProvider>
   );
 }

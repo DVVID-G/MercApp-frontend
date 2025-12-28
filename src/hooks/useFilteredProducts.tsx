@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import { Product } from '../services/product.service';
+import { CatalogProduct } from '../services/product.service';
 import { ProductFilterState } from '../types/productFilters';
 
 export function useFilteredProducts(
-  products: Product[],
+  products: CatalogProduct[],
   filters: ProductFilterState
-): Product[] {
+): CatalogProduct[] {
   return useMemo(() => {
     return products.filter(product => {
       // Date filter (AND)
