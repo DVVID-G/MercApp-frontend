@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Trash2, ScanBarcode, Save, Search } from 'lucide-react
 import { Button } from './Button';
 import { Card } from './Card';
 import { Purchase } from '../App';
-import { PurchaseItem, isPurchaseItemRegular } from '../types/product';
+import { PurchaseItem } from '../types/product';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { createPurchase } from '../services/purchases.service';
@@ -331,7 +331,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
         quantity: p.quantity,
         packageSize: p.packageSize,
         umd: p.umd,
-        barcode: isPurchaseItemRegular(p) ? p.barcode : p.barcode,
+        barcode: p.barcode,
         categoria: p.category,
         productType: p.productType,
       }));
@@ -353,7 +353,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
         itemCount: products.reduce((sum: number, p: PurchaseItem) => sum + p.quantity, 0),
         products: products.map(p => ({
           id: p.id,
-          barcode: isPurchaseItemRegular(p) ? p.barcode : p.barcode || '',
+          barcode: p.barcode || '',
           name: p.name,
           marca: p.marca,
           category: p.category,
