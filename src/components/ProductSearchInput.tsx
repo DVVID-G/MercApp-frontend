@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Filter, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { searchProducts, getProductByBarcode } from '../services/product.service';
 import { ProductFiltersProvider, useProductFilters } from '../hooks/useProductFilters';
 import { useFilteredProducts } from '../hooks/useFilteredProducts';
@@ -8,7 +9,7 @@ import { ProductFilterPanel } from './filters/ProductFilterPanel';
 import { ProductFilterSummary } from './filters/ProductFilterSummary';
 import { generateFilterTags } from '../utils/productFilterTags';
 import { getActiveFilterCount } from '../types/productFilters';
-import { CatalogProduct, isProductRegular, isProductFruver } from '../types/product';
+import { CatalogProduct, isProductRegular } from '../types/product';
 
 export type SearchMode = 'barcode' | 'name';
 
@@ -39,6 +40,7 @@ function ProductSearchInputInner({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
   // Filter hooks
@@ -59,16 +61,25 @@ function ProductSearchInputInner({
       // Perform search inline to avoid dependency issues
       const searchTerm = searchQuery.trim();
       setIsLoading(true);
+      setSearchError(null); // Clear previous error
       searchProducts({ q: searchTerm, limit: 100 })
         .then((results) => {
           setAllSuggestions(results);
           setShowSuggestions(true);
           setSelectedIndex(-1);
+          setSearchError(null); // Clear error on success
         })
         .catch((error) => {
           console.error('Error searching products:', error);
+          const errorMessage = error.response?.data?.message || 
+                              error.message || 
+                              'Error al buscar productos. Verifica tu conexión e intenta nuevamente.';
+          setSearchError(errorMessage);
           setAllSuggestions([]);
           setShowSuggestions(false);
+          toast.error('❌ Error al buscar productos', {
+            description: errorMessage
+          });
         })
         .finally(() => {
           setIsLoading(false);
@@ -77,6 +88,7 @@ function ProductSearchInputInner({
       // Clear results if search query is empty
       setAllSuggestions([]);
       setShowSuggestions(false);
+      setSearchError(null); // Clear error when query is cleared
     }
   }, [searchQuery, searchMode]);
 
@@ -161,6 +173,7 @@ function ProductSearchInputInner({
     setAllSuggestions([]);
     setShowSuggestions(false);
     setSelectedIndex(-1);
+    setSearchError(null); // Clear error when clearing search
     inputRef.current?.focus();
   };
 
@@ -382,9 +395,7 @@ function ProductSearchInputInner({
                           <span className="text-sm text-gray-300 whitespace-nowrap">
                             {isProductRegular(product) 
                               ? `${product.packageSize} ${product.umd}`
-                              : isProductFruver(product)
-                              ? `${product.referenceWeight}g`
-                              : `${product.umd}`
+                              : `${product.referenceWeight}${product.umd}`
                             }
                           </span>
                         </div>
@@ -415,7 +426,7 @@ function ProductSearchInputInner({
                             </div>
                           )}
                         </>
-                      ) : isProductFruver(product) ? (
+                      ) : (
                         <>
                           {/* Reference Price - High Contrast */}
                           <div className="font-bold text-secondary-gold text-lg leading-tight whitespace-nowrap mb-1">
@@ -428,8 +439,6 @@ function ProductSearchInputInner({
                             </div>
                           )}
                         </>
-                      ) : (
-                        <div className="font-bold text-secondary-gold text-lg">$0.00</div>
                       )}
                     </div>
                   </div>
@@ -440,8 +449,35 @@ function ProductSearchInputInner({
         )}
       </AnimatePresence>
 
+      {/* Error Message */}
+      {searchMode === 'name' && searchError && !isLoading && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="relative w-full mt-3 bg-error/10 border-2 border-error/20 rounded-[12px] shadow-lg p-6 text-center"
+        >
+          <div className="text-4xl mb-4" aria-hidden="true">⚠️</div>
+          <h3 className="text-error text-lg font-semibold mb-2">
+            Error al buscar productos
+          </h3>
+          <p className="text-gray-300 text-sm mb-5 leading-relaxed">
+            {searchError}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              clearSearch();
+            }}
+            className="px-5 py-2.5 rounded-[8px] bg-gray-900 border-2 border-gray-700 text-white hover:bg-gray-800 hover:border-secondary-gold focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:ring-offset-2 focus:ring-offset-gray-950 transition-all text-sm font-semibold"
+          >
+            Limpiar búsqueda
+          </button>
+        </motion.div>
+      )}
+
       {/* No Results Message */}
-      {searchMode === 'name' && showSuggestions && suggestions.length === 0 && searchQuery.trim().length >= 1 && !isLoading && (
+      {searchMode === 'name' && showSuggestions && suggestions.length === 0 && searchQuery.trim().length >= 1 && !isLoading && !searchError && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -461,6 +497,7 @@ function ProductSearchInputInner({
           </p>
           {allSuggestions.length > 0 && (
             <button
+              type="button"
               onClick={() => dispatch({ type: 'reset' })}
               className="px-5 py-2.5 rounded-[8px] bg-gray-900 border-2 border-gray-700 text-white hover:bg-gray-800 hover:border-secondary-gold focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:ring-offset-2 focus:ring-offset-gray-950 transition-all text-sm font-semibold"
             >
@@ -469,6 +506,7 @@ function ProductSearchInputInner({
           )}
           {allSuggestions.length === 0 && (
             <button
+              type="button"
               onClick={() => {
                 clearSearch();
               }}

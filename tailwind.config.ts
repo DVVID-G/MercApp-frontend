@@ -7,6 +7,12 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      /**
+       * z-60 is intentionally defined to allow SuccessModal and certain drawer/modal
+       * content to sit above the default 'z-50' layers used by shadcn/ui.
+       * This value is referenced across the codebase for layering consistency and
+       * should not be removed or changed without verifying modal/drawer stacking.
+       */
       zIndex: {
         '60': '60',
       },

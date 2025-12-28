@@ -65,7 +65,7 @@ export function isProductFruver(product: CatalogProduct): product is ProductFruv
  */
 export interface PurchaseProduct {
   id: string;
-  barcode: string;
+  barcode?: string; // Opcional porque ProductFruver puede no tener barcode
   name: string;
   marca: string;
   category: string;
@@ -170,30 +170,34 @@ export function catalogProductToPurchaseProduct(
   catalogProduct: CatalogProduct,
   quantity: number = 1
 ): PurchaseProduct {
-  const unitPrice = isProductRegular(catalogProduct)
-    ? catalogProduct.price
-    : isProductFruver(catalogProduct)
-    ? (catalogProduct.pum || 0)
-    : 0;
-
-  return {
+  // Common fields
+  const baseProduct: Omit<PurchaseProduct, 'price' | 'packageSize' | 'barcode'> = {
     id: catalogProduct._id,
-    barcode: isProductRegular(catalogProduct)
-      ? catalogProduct.barcode
-      : catalogProduct.barcode || '',
     name: catalogProduct.name,
     marca: catalogProduct.marca,
     category: catalogProduct.categoria,
-    price: unitPrice,
     quantity,
-    packageSize: isProductRegular(catalogProduct)
-      ? catalogProduct.packageSize
-      : isProductFruver(catalogProduct)
-      ? catalogProduct.referenceWeight
-      : 1,
     pum: catalogProduct.pum,
     umd: catalogProduct.umd,
     productType: catalogProduct.productType,
   };
+
+  // Type-guarded branches for regular vs fruver
+  if (isProductRegular(catalogProduct)) {
+    return {
+      ...baseProduct,
+      barcode: catalogProduct.barcode,
+      price: catalogProduct.price,
+      packageSize: catalogProduct.packageSize,
+    };
+  } else {
+    // Fruver product
+    return {
+      ...baseProduct,
+      barcode: catalogProduct.barcode, // Preserve undefined for fruver products without barcode
+      price: catalogProduct.pum || 0,
+      packageSize: catalogProduct.referenceWeight,
+    };
+  }
 }
 

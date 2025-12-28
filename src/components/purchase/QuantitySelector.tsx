@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -23,6 +23,7 @@ export function QuantitySelector({
   max,
   disabled = false,
 }: QuantitySelectorProps) {
+  const inputId = useId();
   const [localValue, setLocalValue] = useState<number | ''>(value);
   const step = productType === 'fruver' ? 50 : 1;
   const label = productType === 'fruver' ? 'Peso (gramos)' : 'Cantidad';
@@ -86,7 +87,7 @@ export function QuantitySelector({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-gray-400 text-sm">
+      <label htmlFor={inputId} className="text-gray-400 text-sm">
         {label}
       </label>
       <div className="flex items-center gap-2">
@@ -113,6 +114,7 @@ export function QuantitySelector({
 
         {/* Input Numérico */}
         <input
+          id={inputId}
           type="number"
           value={displayValue}
           onChange={handleInputChange}

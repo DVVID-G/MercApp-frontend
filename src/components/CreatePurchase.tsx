@@ -656,8 +656,10 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
                           </div>
                         </div>
                         <button
+                          type="button"
                           onClick={() => handleRemoveProduct(product.entryId)}
                           className="p-2 hover:bg-error/10 rounded-[8px] transition-colors text-error"
+                          aria-label="Eliminar producto"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
