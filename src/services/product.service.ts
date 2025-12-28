@@ -1,28 +1,5 @@
 import api from './api';
-
-export interface Product {
-  _id: string;
-  name: string;
-  marca: string;
-  price: number;
-  packageSize: number;
-  pum?: number;
-  umd: string;
-  barcode: string;
-  categoria: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateProductData {
-  name: string;
-  marca: string;
-  price: number;
-  packageSize: number;
-  umd: string;
-  barcode: string;
-  categoria: string;
-}
+import { Product, CreateProductRequest } from '../types/product';
 
 export interface UpdateProductData {
   name?: string;
@@ -32,6 +9,8 @@ export interface UpdateProductData {
   umd?: string;
   barcode?: string;
   categoria?: string;
+  referencePrice?: number;
+  referenceWeight?: number;
 }
 
 export interface SearchProductsParams {
@@ -63,9 +42,9 @@ export async function getProductByBarcode(barcode: string): Promise<Product | nu
 }
 
 /**
- * Crea un nuevo producto
+ * Crea un nuevo producto (regular o fruver)
  */
-export async function createProduct(data: CreateProductData): Promise<Product> {
+export async function createProduct(data: CreateProductRequest): Promise<Product> {
   const response = await api.post<Product>('/products', data);
   return response.data;
 }

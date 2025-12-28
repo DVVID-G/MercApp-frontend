@@ -12,13 +12,15 @@ import { PaginationControls } from './filters/PaginationControls';
 import { FilterErrorBoundary } from './filters/FilterErrorBoundary';
 import { useFilteredPurchases } from '../hooks/usePurchaseFilter';
 import { parseURLParams, serializeToURL } from '../utils/filterPersistence';
+import { CartButton } from './CartButton';
 
 interface PurchaseHistoryProps {
   purchases: Purchase[];
   onViewDetail: (purchase: Purchase) => void;
+  onOpenCart: () => void;
 }
 
-export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProps) {
+export function PurchaseHistory({ purchases, onViewDetail, onOpenCart }: PurchaseHistoryProps) {
   // local UI state
   const [showFilters, setShowFilters] = useState(false);
 
@@ -26,12 +28,12 @@ export function PurchaseHistory({ purchases, onViewDetail }: PurchaseHistoryProp
   // Use FiltersProvider internally for this view
   return (
     <FiltersProvider>
-      <InnerPurchaseHistory purchases={purchases} onViewDetail={onViewDetail} showFilters={showFilters} setShowFilters={setShowFilters} />
+      <InnerPurchaseHistory purchases={purchases} onViewDetail={onViewDetail} onOpenCart={onOpenCart} showFilters={showFilters} setShowFilters={setShowFilters} />
     </FiltersProvider>
   );
 }
 
-function InnerPurchaseHistory({ purchases, onViewDetail, showFilters, setShowFilters }: PurchaseHistoryProps & { showFilters: boolean; setShowFilters: (v: boolean) => void }) {
+function InnerPurchaseHistory({ purchases, onViewDetail, onOpenCart, showFilters, setShowFilters }: PurchaseHistoryProps & { showFilters: boolean; setShowFilters: (v: boolean) => void }) {
   const { state, dispatch } = useFilters();
   const { filtered, total, hasMore } = useFilteredPurchases(purchases);
   const [newlyLoadedStartIndex, setNewlyLoadedStartIndex] = useState<number | null>(null);
@@ -102,13 +104,17 @@ function InnerPurchaseHistory({ purchases, onViewDetail, showFilters, setShowFil
     <div className="min-h-screen pb-24">
       {/* Header */}
       <div className="bg-gradient-to-b from-gray-950 to-primary-black px-6 pt-12 pb-6 sticky top-0 z-10">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h1 className="mb-2">Historial</h1>
-          <p className="text-gray-400">Todas tus compras registradas</p>
-        </motion.div>
+        <div className="flex items-start justify-between gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1"
+          >
+            <h1 className="mb-2">Historial</h1>
+            <p className="text-gray-400">Todas tus compras registradas</p>
+          </motion.div>
+          <CartButton onClick={onOpenCart} />
+        </div>
       </div>
 
       <div className="px-6">

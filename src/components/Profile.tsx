@@ -7,14 +7,16 @@ import { getMeRequest } from '../services/auth.service';
 import { getAnalyticsOverview, AnalyticsOverview } from '../services/analytics.service';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { CartButton } from './CartButton';
 
 interface ProfileProps {
   onLogout: () => void;
+  onOpenCart: () => void;
 }
 
 const COLORS = ['#d4af37', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#3498db'];
 
-export function Profile({ onLogout }: ProfileProps) {
+export function Profile({ onLogout, onOpenCart }: ProfileProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [stats, setStats] = useState<AnalyticsOverview | null>(null);
@@ -55,13 +57,17 @@ export function Profile({ onLogout }: ProfileProps) {
     <div className="min-h-screen pb-24">
       {/* Header */}
       <div className="bg-gradient-to-b from-gray-950 to-primary-black px-6 pt-12 pb-6">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h1 className="mb-2">Perfil</h1>
-          <p className="text-gray-400">Gestiona tu cuenta</p>
-        </motion.div>
+        <div className="flex items-start justify-between gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1"
+          >
+            <h1 className="mb-2">Perfil</h1>
+            <p className="text-gray-400">Gestiona tu cuenta</p>
+          </motion.div>
+          <CartButton onClick={onOpenCart} />
+        </div>
       </div>
 
       <div className="px-6">
