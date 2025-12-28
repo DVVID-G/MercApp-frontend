@@ -470,8 +470,7 @@ function ProductSearchInputInner({
           {allSuggestions.length === 0 && (
             <button
               onClick={() => {
-                setQuery('');
-                inputRef.current?.focus();
+                clearSearch();
               }}
               className="px-5 py-2.5 rounded-[8px] bg-gray-900 border-2 border-gray-700 text-white hover:bg-gray-800 hover:border-secondary-gold focus:outline-none focus:ring-2 focus:ring-secondary-gold focus:ring-offset-2 focus:ring-offset-gray-950 transition-all text-sm font-semibold"
             >

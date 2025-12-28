@@ -78,9 +78,8 @@ export function QuantitySelector({
     if (localValue === '' || (typeof localValue === 'number' && (isNaN(localValue) || localValue < min))) {
       setLocalValue(min);
       onChange(min);
-    } else if (typeof localValue === 'number') {
-      setLocalValue(value);
     }
+    // Si localValue es un número válido, mantenerlo (handleInputChange ya llamó onChange)
   };
 
   const displayValue = localValue === '' ? value : localValue;
