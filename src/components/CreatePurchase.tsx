@@ -80,8 +80,12 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
     toast.info(`Producto no encontrado. Créalo ahora.`);
   };
 
-  const handleScanLookupError = (error: any) => {
-    console.error('Error looking up product:', error);
+  const handleScanLookupError = (error: unknown) => {
+    if (error instanceof Error) {
+      console.error('Error looking up product:', error.message, error);
+    } else {
+      console.error('Error looking up product:', error);
+    }
     toast.error('Error al buscar el producto. Verifica tu conexión e intenta nuevamente.');
     // Keep scanner open so user can retry
   };

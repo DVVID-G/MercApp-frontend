@@ -1,4 +1,4 @@
-import { useState, useId } from 'react';
+import { useState, useEffect, useId, useRef } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -24,10 +24,19 @@ export function QuantitySelector({
   disabled = false,
 }: QuantitySelectorProps) {
   const inputId = useId();
-  const [localValue, setLocalValue] = useState<number | ''>(value);
+  const [localValue, setLocalValue] = useState<number | '' | undefined>(undefined);
+  const isFocusedRef = useRef(false);
   const step = productType === 'fruver' ? 50 : 1;
   const label = productType === 'fruver' ? 'Peso (gramos)' : 'Cantidad';
   const placeholder = productType === 'fruver' ? 'Ej: 500' : 'Ej: 1';
+
+  // Sync localValue with value prop when it changes externally
+  // Only update when input is not focused to avoid interfering with user edits
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      setLocalValue(value);
+    }
+  }, [value]);
 
   const handleIncrement = () => {
     if (disabled) return;
@@ -75,15 +84,15 @@ export function QuantitySelector({
   };
 
   const handleInputBlur = () => {
-    // Si el campo está vacío o inválido, restaurar al valor mínimo
-    if (localValue === '' || (typeof localValue === 'number' && (isNaN(localValue) || localValue < min))) {
+    // Si el campo está vacío, undefined, o inválido, restaurar al valor mínimo
+    if (localValue === '' || localValue === undefined || localValue === null || (typeof localValue === 'number' && (isNaN(localValue) || localValue < min))) {
       setLocalValue(min);
       onChange(min);
     }
     // Si localValue es un número válido, mantenerlo (handleInputChange ya llamó onChange)
   };
 
-  const displayValue = localValue === '' ? value : localValue;
+  const displayValue = localValue !== undefined && localValue !== null ? localValue : value;
 
   return (
     <div className="flex flex-col gap-2">
@@ -118,8 +127,14 @@ export function QuantitySelector({
           type="number"
           value={displayValue}
           onChange={handleInputChange}
-          onBlur={handleInputBlur}
-          onFocus={() => setLocalValue(value)}
+          onFocus={() => {
+            isFocusedRef.current = true;
+            setLocalValue(value);
+          }}
+          onBlur={() => {
+            isFocusedRef.current = false;
+            handleInputBlur();
+          }}
           min={min}
           max={max}
           step={step}

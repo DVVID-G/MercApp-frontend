@@ -195,7 +195,7 @@ export function catalogProductToPurchaseProduct(
     return {
       ...baseProduct,
       barcode: catalogProduct.barcode, // Preserve undefined for fruver products without barcode
-      price: catalogProduct.pum || 0,
+      price: catalogProduct.pum,
       packageSize: catalogProduct.referenceWeight,
     };
   }
