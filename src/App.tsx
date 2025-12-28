@@ -179,7 +179,7 @@ export default function App() {
           />
         );
       default:
-        return <Dashboard purchases={purchases} onCreatePurchase={() => setCurrentScreen('create-purchase')} onViewDetail={handleViewPurchaseDetail} isOffline={isOffline} />;
+        return <Dashboard purchases={purchases} onCreatePurchase={() => setCurrentScreen('create-purchase')} onViewDetail={handleViewPurchaseDetail} onOpenCart={() => setCurrentScreen('create-purchase')} isOffline={isOffline} />;
     }
   };
 
