@@ -11,7 +11,12 @@ import { ManualProductForm } from './ManualProductForm';
 import { type ManualProductFormData } from '../validators/forms';
 import { PriceUpdateModal } from './PriceUpdateModal';
 import { updateProduct, createProduct } from '../services/product.service';
-import type { Product as CatalogProduct } from '../types/product';
+import type { 
+  Product as CatalogProduct, 
+  CreateProductRequest,
+  CreateProductRegularRequest,
+  CreateProductFruverRequest
+} from '../types/product';
 import { isProductRegular, isProductFruver } from '../types/product';
 import { BarcodeScanner } from './BarcodeScanner';
 import { SuccessModal } from './SuccessModal';
@@ -99,33 +104,74 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
     setIsLoading(true);
     try {
       // Create product in backend catalog first
-      const productData: any = {
+      // Initialize with common required fields, properly typed
+      const baseData: {
+        name: string;
+        marca: string;
+        categoria: string;
+        productType: 'regular' | 'fruver';
+      } = {
         name: formData.name.trim(),
         marca: formData.marca.trim(),
         categoria: formData.categoria.trim(),
         productType: formData.productType,
       };
 
-      // Add fields based on product type
+      // Build productData with proper typing based on product type
+      let productData: CreateProductRequest;
+
       if (formData.productType === 'regular') {
-        productData.barcode = formData.barcode?.trim() || '';
-        productData.price = formData.price;
-        productData.packageSize = formData.packageSize;
-        productData.umd = formData.umd;
-      } else {
-        // Fruver
-        productData.referencePrice = formData.price; // Reusing price field as referencePrice
-        productData.referenceWeight = formData.packageSize; // Reusing packageSize as referenceWeight
-        // UMD for fruver must be 'g' or 'kg'
-        productData.umd = formData.umd === 'gramos' || formData.umd === 'g' ? 'g' : 
-                         formData.umd === 'kg' || formData.umd === 'kilogramos' ? 'kg' : 'g';
-        // Barcode is optional for fruver - only include if provided, not empty, and valid length
-        const barcodeValue = formData.barcode?.trim();
-        if (barcodeValue && barcodeValue.length >= 8 && barcodeValue.length <= 20) {
-          productData.barcode = barcodeValue;
+        // Regular product: barcode is required
+        const barcodeValue = formData.barcode?.trim() || '';
+        if (!barcodeValue || barcodeValue.length < 8 || barcodeValue.length > 20) {
+          throw new Error('El código de barras es requerido y debe tener entre 8 y 20 caracteres');
         }
-        // If barcode is empty or invalid, explicitly set to undefined (don't include in object)
-        // This ensures Zod validation works correctly with optional field
+
+        // Type assertion after validation to satisfy compiler
+        const validatedBarcode: string = barcodeValue;
+
+        productData = {
+          name: baseData.name,
+          marca: baseData.marca,
+          categoria: baseData.categoria,
+          productType: 'regular',
+          barcode: validatedBarcode,
+          price: formData.price,
+          packageSize: formData.packageSize,
+          umd: formData.umd,
+        } satisfies CreateProductRegularRequest;
+      } else {
+        // Fruver product: barcode is optional
+        // Normalize umd to 'g' | 'kg'
+        const normalizedUmd: 'g' | 'kg' = 
+          formData.umd === 'gramos' || formData.umd === 'g' ? 'g' : 
+          formData.umd === 'kg' || formData.umd === 'kilogramos' ? 'kg' : 'g';
+
+        // Only include barcode if provided, not empty, and valid length
+        const barcodeValue = formData.barcode?.trim();
+        const hasValidBarcode = barcodeValue && barcodeValue.length >= 8 && barcodeValue.length <= 20;
+
+        // Type assertion after validation if barcode is present
+        const validatedBarcode: string | undefined = hasValidBarcode ? barcodeValue : undefined;
+
+        // Build fruver product data, conditionally including barcode
+        // Only include barcode property if it's valid (don't set undefined)
+        const fruverData: CreateProductFruverRequest = {
+          name: baseData.name,
+          marca: baseData.marca,
+          categoria: baseData.categoria,
+          productType: 'fruver',
+          referencePrice: formData.price,
+          referenceWeight: formData.packageSize,
+          umd: normalizedUmd,
+        };
+
+        // Only add barcode property if it exists and is valid
+        if (validatedBarcode !== undefined) {
+          fruverData.barcode = validatedBarcode;
+        }
+
+        productData = fruverData;
       }
 
       console.log('Sending product data:', productData);
