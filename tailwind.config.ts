@@ -7,6 +7,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      zIndex: {
+        '60': '60',
+      },
       // Scanner-specific animations
       keyframes: {
         shake: {

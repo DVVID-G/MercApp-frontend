@@ -1,15 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Product } from '../App';
-
-interface PurchaseItem extends Product {
-  // Product already includes all needed fields
-}
+import { PurchaseItem, isPurchaseItemRegular, isPurchaseItemFruver } from '../types/product';
 
 interface PurchaseContextType {
   draftProducts: PurchaseItem[];
   addProduct: (product: PurchaseItem) => void;
-  removeProduct: (id: string) => void;
-  updateProductQuantity: (id: string, quantity: number) => void;
+  removeProduct: (entryId: string) => void;
+  updateProductQuantity: (entryId: string, quantity: number) => void;
   clearDraft: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
@@ -32,16 +28,77 @@ export const PurchaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (Array.isArray(parsed)) {
           // Migrate old products without productType
           // If umd is 'g' or 'kg', it's likely a fruver product
-          const migrated = parsed.map((p: PurchaseItem) => {
+          const migrated = parsed.map((p: any): PurchaseItem => {
+            // Generate entryId for old items that don't have it
+            const entryId = p.entryId || crypto.randomUUID();
+            
+            // Migrate old format to new PurchaseItem format
             if (!p.productType) {
               // Infer productType from umd - if it's 'g' or 'kg', it's fruver
               if (p.umd === 'g' || p.umd === 'kg') {
-                return { ...p, productType: 'fruver' as const };
+                return {
+                  entryId,
+                  id: p.id,
+                  name: p.name,
+                  marca: p.marca,
+                  category: p.category || p.categoria,
+                  umd: p.umd,
+                  productType: 'fruver',
+                  quantity: p.quantity || 1,
+                  price: p.price || 0,
+                  pum: p.pum,
+                  packageSize: p.packageSize || 1,
+                  barcode: p.barcode,
+                };
               }
               // Otherwise assume regular
-              return { ...p, productType: 'regular' as const };
+              return {
+                entryId,
+                id: p.id,
+                name: p.name,
+                marca: p.marca,
+                category: p.category || p.categoria,
+                umd: p.umd,
+                productType: 'regular',
+                quantity: p.quantity || 1,
+                price: p.price || 0,
+                pum: p.pum,
+                packageSize: p.packageSize || 1,
+                barcode: p.barcode || '',
+              };
             }
-            return p;
+            // Already has productType, ensure it matches PurchaseItem shape
+            if (p.productType === 'fruver') {
+              return {
+                entryId,
+                id: p.id,
+                name: p.name,
+                marca: p.marca,
+                category: p.category || p.categoria,
+                umd: p.umd,
+                productType: 'fruver',
+                quantity: p.quantity || 1,
+                price: p.price || 0,
+                pum: p.pum,
+                packageSize: p.packageSize || 1,
+                barcode: p.barcode,
+              };
+            } else {
+              return {
+                entryId,
+                id: p.id,
+                name: p.name,
+                marca: p.marca,
+                category: p.category || p.categoria,
+                umd: p.umd,
+                productType: 'regular',
+                quantity: p.quantity || 1,
+                price: p.price || 0,
+                pum: p.pum,
+                packageSize: p.packageSize || 1,
+                barcode: p.barcode || '',
+              };
+            }
           });
           setDraftProducts(migrated);
         }
@@ -63,43 +120,51 @@ export const PurchaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addProduct = useCallback((product: PurchaseItem) => {
     setDraftProducts((prev) => {
+      // Generate unique entryId if not provided
+      const productWithEntryId: PurchaseItem = product.entryId 
+        ? product 
+        : isPurchaseItemRegular(product)
+        ? { ...product, entryId: crypto.randomUUID() }
+        : { ...product, entryId: crypto.randomUUID() };
+      
       // For fruver products, each addition is a separate unit (don't merge)
       // For regular products, merge by adding quantity
-      if (product.productType === 'fruver') {
+      if (isPurchaseItemFruver(productWithEntryId)) {
         // Fruver products should be separate entries - each counts as 1 unit
         // Add as new entry even if same product ID exists
-        return [...prev, product];
+        return [...prev, productWithEntryId];
       }
       
       // Regular products: check if product already exists and merge
-      const existingIndex = prev.findIndex((p) => p.id === product.id && p.productType !== 'fruver');
+      const existingIndex = prev.findIndex((p) => p.id === productWithEntryId.id && isPurchaseItemRegular(p));
       if (existingIndex >= 0) {
         // Update quantity if exists (only for regular products)
         const updated = [...prev];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + product.quantity,
-          // Preserve productType
-          productType: product.productType || updated[existingIndex].productType || 'regular',
-        };
+        const existing = updated[existingIndex];
+        if (isPurchaseItemRegular(existing) && isPurchaseItemRegular(productWithEntryId)) {
+          updated[existingIndex] = {
+            ...existing,
+            quantity: existing.quantity + productWithEntryId.quantity,
+          };
+        }
         return updated;
       }
       // Add new product
-      return [...prev, product];
+      return [...prev, productWithEntryId];
     });
   }, []);
 
-  const removeProduct = useCallback((id: string) => {
-    setDraftProducts((prev) => prev.filter((p) => p.id !== id));
+  const removeProduct = useCallback((entryId: string) => {
+    setDraftProducts((prev) => prev.filter((p) => p.entryId !== entryId));
   }, []);
 
-  const updateProductQuantity = useCallback((id: string, quantity: number) => {
+  const updateProductQuantity = useCallback((entryId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeProduct(id);
+      removeProduct(entryId);
       return;
     }
     setDraftProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, quantity } : p))
+      prev.map((p) => (p.entryId === entryId ? { ...p, quantity } : p))
     );
   }, [removeProduct]);
 
@@ -112,13 +177,11 @@ export const PurchaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return draftProducts.reduce((sum, p) => {
       // Fruver products always count as 1 unit regardless of quantity (weight)
       // Regular products count by their quantity
-      // Check productType explicitly - if it's fruver, count as 1
-      if (p.productType === 'fruver') {
+      if (isPurchaseItemFruver(p)) {
         return sum + 1;
       }
-      // If productType is 'regular' or not set (backward compatibility), count by quantity
       // Regular products: sum their quantity
-      return sum + (p.quantity || 1);
+      return sum + p.quantity;
     }, 0);
   }, [draftProducts]);
 

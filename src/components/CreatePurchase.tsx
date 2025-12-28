@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Plus, Trash2, ScanBarcode, Save, Search } from 'lucide-react';
 import { Button } from './Button';
 import { Card } from './Card';
-import { Purchase, Product } from '../App';
+import { Purchase } from '../App';
+import { PurchaseItem, isPurchaseItemRegular } from '../types/product';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { createPurchase } from '../services/purchases.service';
@@ -12,7 +13,7 @@ import { type ManualProductFormData } from '../validators/forms';
 import { PriceUpdateModal } from './PriceUpdateModal';
 import { updateProduct, createProduct } from '../services/product.service';
 import type { 
-  Product as CatalogProduct, 
+  CatalogProduct,
   CreateProductRequest,
   CreateProductRegularRequest,
   CreateProductFruverRequest
@@ -27,10 +28,6 @@ interface CreatePurchaseProps {
   onSave: (purchase: Purchase) => void;
   onCancel: () => void;
   autoStartScanner?: boolean;
-}
-
-interface PurchaseItem extends Product {
-  // Product ya incluye marca y barcode
 }
 
 export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: CreatePurchaseProps) {
@@ -235,7 +232,8 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
   };
 
   // Handler for success modal close - transitions to AddToCartCard
-  const handleSuccessModalClose = () => {
+  // Memoized to prevent SuccessModal effects from resetting
+  const handleSuccessModalClose = useCallback(() => {
     setShowSuccessModal(false);
     // Wait for modal close animation before showing AddToCartCard
     setTimeout(() => {
@@ -243,7 +241,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
         setShowAddToCart(true);
       }
     }, 300);
-  };
+  }, [pendingProduct]);
 
   // Handler for AddToCartCard - adds product with selected quantity
   const handleAddToCart = (quantity: number) => {
@@ -258,25 +256,35 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
       ? (pendingProduct.pum || 0) // PUM is already price per gram
       : 0;
 
-    const newProduct: PurchaseItem = {
-      id: pendingProduct._id,
-      name: pendingProduct.name,
-      marca: pendingProduct.marca,
-      category: pendingProduct.categoria,
-      price: unitPrice, // Store unit price (PUM for fruver, price for regular)
-      quantity: quantity, // Use quantity from AddToCartCard
-      packageSize: isProductRegular(pendingProduct) 
-        ? pendingProduct.packageSize 
-        : isProductFruver(pendingProduct)
-        ? pendingProduct.referenceWeight
-        : 1,
-      pum: pendingProduct.pum,
-      umd: pendingProduct.umd,
-      barcode: isProductRegular(pendingProduct) 
-        ? pendingProduct.barcode 
-        : pendingProduct.barcode || '',
-      productType: pendingProduct.productType, // Store product type for counting
-    };
+    const newProduct: PurchaseItem = isProductRegular(pendingProduct)
+      ? {
+          entryId: crypto.randomUUID(),
+          id: pendingProduct._id,
+          name: pendingProduct.name,
+          marca: pendingProduct.marca,
+          category: pendingProduct.categoria,
+          price: unitPrice, // Store unit price
+          quantity: quantity,
+          packageSize: pendingProduct.packageSize,
+          pum: pendingProduct.pum,
+          umd: pendingProduct.umd,
+          productType: 'regular',
+          barcode: pendingProduct.barcode,
+        }
+      : {
+          entryId: crypto.randomUUID(),
+          id: pendingProduct._id,
+          name: pendingProduct.name,
+          marca: pendingProduct.marca,
+          category: pendingProduct.categoria,
+          price: unitPrice, // Store unit price (PUM)
+          quantity: quantity,
+          packageSize: pendingProduct.referenceWeight,
+          pum: pendingProduct.pum,
+          umd: pendingProduct.umd,
+          productType: 'fruver',
+          barcode: pendingProduct.barcode,
+        };
 
     // Add to both local state and context
     setProducts([...products, newProduct]);
@@ -299,10 +307,10 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
     toast.info('Producto creado pero no agregado a la compra');
   };
 
-  const handleRemoveProduct = (id: string) => {
-    const product = products.find(p => p.id === id);
-    setProducts(products.filter((p: Product) => p.id !== id));
-    removeProduct(id); // Also remove from context
+  const handleRemoveProduct = (entryId: string) => {
+    const product = products.find(p => p.entryId === entryId);
+    setProducts(products.filter((p: PurchaseItem) => p.entryId !== entryId));
+    removeProduct(entryId); // Also remove from context
     if (product) {
       toast.info(`🗑️ ${product.name} eliminado`);
     }
@@ -323,8 +331,9 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
         quantity: p.quantity,
         packageSize: p.packageSize,
         umd: p.umd,
-        barcode: p.barcode,
+        barcode: isPurchaseItemRegular(p) ? p.barcode : p.barcode,
         categoria: p.category,
+        productType: p.productType,
       }));
 
       // Call backend API
@@ -344,7 +353,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
         itemCount: products.reduce((sum: number, p: PurchaseItem) => sum + p.quantity, 0),
         products: products.map(p => ({
           id: p.id,
-          barcode: p.barcode,
+          barcode: isPurchaseItemRegular(p) ? p.barcode : p.barcode || '',
           name: p.name,
           marca: p.marca,
           category: p.category,
@@ -353,6 +362,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
           packageSize: p.packageSize,
           pum: p.pum,
           umd: p.umd,
+          productType: p.productType,
         })),
         synced: true
       };
@@ -392,25 +402,35 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
       : 0;
     
     // Add product with catalog price
-    const newProduct: PurchaseItem = {
-      id: product._id,
-      name: product.name,
-      marca: product.marca,
-      category: product.categoria,
-      price: unitPrice,
-      quantity,
-      packageSize: isProductRegular(product)
-        ? product.packageSize
-        : isProductFruver(product)
-        ? product.referenceWeight
-        : 1,
-      pum: product.pum,
-      umd: product.umd,
-      barcode: isProductRegular(product)
-        ? product.barcode
-        : product.barcode || '',
-      productType: product.productType, // Store product type for counting
-    };
+    const newProduct: PurchaseItem = isProductRegular(product)
+      ? {
+          entryId: crypto.randomUUID(),
+          id: product._id,
+          name: product.name,
+          marca: product.marca,
+          category: product.categoria,
+          price: unitPrice,
+          quantity,
+          packageSize: product.packageSize,
+          pum: product.pum,
+          umd: product.umd,
+          productType: 'regular',
+          barcode: product.barcode,
+        }
+      : {
+          entryId: crypto.randomUUID(),
+          id: product._id,
+          name: product.name,
+          marca: product.marca,
+          category: product.categoria,
+          price: unitPrice,
+          quantity,
+          packageSize: product.referenceWeight,
+          pum: product.pum,
+          umd: product.umd,
+          productType: 'fruver',
+          barcode: product.barcode,
+        };
     
     setProducts([...products, newProduct]);
     addProduct(newProduct); // Sync with context
@@ -443,21 +463,35 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
       const unitPrice = packageSize > 0 ? newPrice / packageSize : newPrice;
       
       // Add product with new price
-      const newProduct: PurchaseItem = {
-        id: product._id,
-        name: product.name,
-        marca: product.marca,
-        category: product.categoria,
-        price: unitPrice,
-        quantity,
-        packageSize,
-        pum: unitPrice,
-        umd: product.umd,
-        barcode: isProductRegular(product)
-          ? product.barcode
-          : product.barcode || '',
-        productType: product.productType, // Store product type for counting
-      };
+      const newProduct: PurchaseItem = isProductRegular(product)
+        ? {
+            entryId: crypto.randomUUID(),
+            id: product._id,
+            name: product.name,
+            marca: product.marca,
+            category: product.categoria,
+            price: unitPrice,
+            quantity,
+            packageSize,
+            pum: unitPrice,
+            umd: product.umd,
+            productType: 'regular',
+            barcode: product.barcode,
+          }
+        : {
+            entryId: crypto.randomUUID(),
+            id: product._id,
+            name: product.name,
+            marca: product.marca,
+            category: product.categoria,
+            price: unitPrice,
+            quantity,
+            packageSize,
+            pum: unitPrice,
+            umd: product.umd,
+            productType: 'fruver',
+            barcode: product.barcode,
+          };
       
       setProducts([...products, newProduct]);
       addProduct(newProduct); // Sync with context
@@ -490,21 +524,35 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
     const unitPrice = packageSize > 0 ? newPrice / packageSize : newPrice;
     
     // Add product with new price (don't update catalog)
-    const newProduct: PurchaseItem = {
-      id: product._id,
-      name: product.name,
-      marca: product.marca,
-      category: product.categoria,
-      price: unitPrice,
-      quantity,
-      packageSize,
-      pum: unitPrice,
-      umd: product.umd,
-      barcode: isProductRegular(product)
-        ? product.barcode
-        : product.barcode || '',
-      productType: product.productType, // Store product type for counting
-    };
+    const newProduct: PurchaseItem = isProductRegular(product)
+      ? {
+          entryId: crypto.randomUUID(),
+          id: product._id,
+          name: product.name,
+          marca: product.marca,
+          category: product.categoria,
+          price: unitPrice,
+          quantity,
+          packageSize,
+          pum: unitPrice,
+          umd: product.umd,
+          productType: 'regular',
+          barcode: product.barcode,
+        }
+      : {
+          entryId: crypto.randomUUID(),
+          id: product._id,
+          name: product.name,
+          marca: product.marca,
+          category: product.categoria,
+          price: unitPrice,
+          quantity,
+          packageSize,
+          pum: unitPrice,
+          umd: product.umd,
+          productType: 'fruver',
+          barcode: product.barcode,
+        };
     
     setProducts([...products, newProduct]);
     addProduct(newProduct); // Sync with context
@@ -512,7 +560,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
     setPriceModalData(null);
   };
 
-  const total = products.reduce((sum: number, p: Product) => sum + (p.price * p.quantity), 0);
+  const total = products.reduce((sum: number, p: PurchaseItem) => sum + (p.price * p.quantity), 0);
 
   return (
     <div className="min-h-screen pb-24">
@@ -580,7 +628,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
           ) : (
             <div className="space-y-3">
               <AnimatePresence>
-                {products.map((product: Product, index: number) => (
+                {products.map((product: PurchaseItem, index: number) => (
                   <motion.div
                     key={product.id}
                     initial={{ opacity: 0, x: -20 }}
@@ -608,7 +656,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
                           </div>
                         </div>
                         <button
-                          onClick={() => handleRemoveProduct(product.id)}
+                          onClick={() => handleRemoveProduct(product.entryId)}
                           className="p-2 hover:bg-error/10 rounded-[8px] transition-colors text-error"
                         >
                           <Trash2 className="w-4 h-4" />

@@ -8,12 +8,12 @@ import { ProductFilterPanel } from './filters/ProductFilterPanel';
 import { ProductFilterSummary } from './filters/ProductFilterSummary';
 import { generateFilterTags } from '../utils/productFilterTags';
 import { getActiveFilterCount } from '../types/productFilters';
-import { Product, isProductRegular, isProductFruver } from '../types/product';
+import { CatalogProduct, isProductRegular, isProductFruver } from '../types/product';
 
 export type SearchMode = 'barcode' | 'name';
 
 export interface ProductSearchInputProps {
-  onProductSelect: (product: Product) => void;
+  onProductSelect: (product: CatalogProduct) => void;
   onNoResults?: () => void;
   placeholder?: string;
   mode?: SearchMode;
@@ -34,7 +34,7 @@ function ProductSearchInputInner({
   const [searchMode, setSearchMode] = useState<SearchMode>(initialMode);
   const [query, setQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState(''); // Query used for actual search
-  const [allSuggestions, setAllSuggestions] = useState<Product[]>([]);
+  const [allSuggestions, setAllSuggestions] = useState<CatalogProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -138,7 +138,7 @@ function ProductSearchInputInner({
     }
   };
 
-  const handleSelectProduct = (product: Product) => {
+  const handleSelectProduct = (product: CatalogProduct) => {
     onProductSelect(product);
     setQuery('');
     setAllSuggestions([]);

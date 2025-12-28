@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingCart } from 'lucide-react';
 import { Button } from '../Button';
 import { QuantitySelector } from './QuantitySelector';
-import type { Product } from '../../types/product';
+import type { CatalogProduct } from '../../types/product';
 import { isProductRegular, isProductFruver } from '../../types/product';
 
 export interface AddToCartCardProps {
-  product: Product;
+  product: CatalogProduct;
   onAddToCart: (quantity: number) => void;
   onCancel: () => void;
   isOpen: boolean;
