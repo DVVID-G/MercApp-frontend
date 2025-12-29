@@ -2,10 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import * as userPreferencesService from '../services/user-preferences.service';
 import * as userAccountService from '../services/user-account.service';
 import { useAuth } from './AuthContext';
-import { getMeRequest } from '../services/auth.service';
 import { toast } from 'sonner';
-
-const STORAGE_KEY = import.meta.env.VITE_AUTH_STORAGE_KEY || 'mercapp_auth';
 
 type SettingsState = {
   preferences: userPreferencesService.UserPreferences | null;
@@ -21,7 +18,7 @@ type SettingsState = {
 const SettingsContext = createContext<SettingsState | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { accessToken } = useAuth();
+  const { accessToken, refreshUser } = useAuth();
   const [preferences, setPreferences] = useState<userPreferencesService.UserPreferences | null>(null);
   const [loadingPreferences, setLoadingPreferences] = useState(false);
   const [updatingAccount, setUpdatingAccount] = useState(false);
@@ -60,21 +57,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUpdatingAccount(true);
     try {
       await userAccountService.updateAccount(updates);
-      // Refresh user data and update localStorage
-      const updatedUser = await getMeRequest();
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          parsed.user = updatedUser;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-        } catch (e) {
-          // ignore
-        }
-      }
+      await refreshUser();
       toast.success('Información de cuenta actualizada');
-      // Reload page to refresh user data in AuthContext
-      window.location.reload();
     } catch (error: any) {
       console.error('Failed to update account', error);
       const message = error.response?.data?.message || 'Error al actualizar cuenta';
@@ -83,7 +67,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } finally {
       setUpdatingAccount(false);
     }
-  }, [accessToken]);
+  }, [accessToken, refreshUser]);
 
   const changePassword = useCallback(async (input: userAccountService.ChangePasswordInput) => {
     if (!accessToken) return;

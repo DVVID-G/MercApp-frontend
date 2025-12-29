@@ -1,15 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api, setAuthToken } from '../services/api';
 import * as authService from '../services/auth.service';
-import { Session, ActivityLog } from '../services/auth.service';
+import { Session, ActivityLog, User, getMeRequest } from '../services/auth.service';
 
 type AuthState = {
-  user: any | null;
+  user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string, confirmPassword?: string) => Promise<void>;
   logout: (sessionId?: string, all?: boolean) => Promise<void>;
+  refreshUser: () => Promise<void>;
   sessions: Session[];
   activityLogs: ActivityLog[];
   loadingSessions: boolean;
@@ -30,7 +31,7 @@ const STORAGE_KEY = import.meta.env.VITE_AUTH_STORAGE_KEY || 'mercapp_auth';
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -225,6 +226,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const updatedUser = await getMeRequest();
+      setUser(updatedUser);
+      
+      // Update STORAGE_KEY in localStorage
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          parsed.user = updatedUser;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        } catch (e) {
+          // Handle parse errors - if parsing fails, create new entry with user
+          const currentAccessToken = accessToken;
+          const currentRefreshToken = refreshToken;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
+            accessToken: currentAccessToken, 
+            refreshToken: currentRefreshToken, 
+            user: updatedUser 
+          }));
+        }
+      } else {
+        // If no stored data, create new entry
+        const currentAccessToken = accessToken;
+        const currentRefreshToken = refreshToken;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
+          accessToken: currentAccessToken, 
+          refreshToken: currentRefreshToken, 
+          user: updatedUser 
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to refresh user', error);
+      throw error;
+    }
+  }, [accessToken, refreshToken]);
+
   return (
     <AuthContext.Provider
       value={{ 
@@ -234,6 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login: handleLogin, 
         signup: handleSignup, 
         logout: handleLogout,
+        refreshUser,
         sessions,
         activityLogs,
         loadingSessions,
