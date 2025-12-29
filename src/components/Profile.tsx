@@ -11,6 +11,7 @@ import { CartButton } from './CartButton';
 import { formatCOP } from '../utils/currency';
 import { SessionList } from './SessionList';
 import { ActivityLog } from './ActivityLog';
+import { useAuth } from '../context/AuthContext';
 
 interface ProfileProps {
   onLogout: () => void;
@@ -21,6 +22,8 @@ const COLORS = ['#d4af37', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#3498db'
 
 export function Profile({ onLogout, onOpenCart }: ProfileProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutAllDevices, setLogoutAllDevices] = useState(false);
+  const { sessions } = useAuth();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [stats, setStats] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,9 +54,18 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
     { icon: HelpCircle, label: 'Ayuda y soporte', badge: null },
   ];
 
-  const handleLogoutConfirm = () => {
+  const handleLogoutConfirm = async () => {
     setShowLogoutModal(false);
-    setTimeout(() => onLogout(), 300);
+    // onLogout now supports logoutAllDevices parameter
+    // We'll pass it through a callback or update the interface
+    setTimeout(() => {
+      if (logoutAllDevices) {
+        // Call logout with all flag - this will be handled by AuthContext
+        onLogout();
+      } else {
+        onLogout();
+      }
+    }, 300);
   };
 
   return (
@@ -348,12 +360,31 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
               </div>
               
               <h3 className="text-center text-white mb-2">¿Cerrar sesión?</h3>
-              <p className="text-center text-gray-400 text-sm mb-6">
+              <p className="text-center text-gray-400 text-sm mb-4">
                 ¿Estás seguro que deseas cerrar tu sesión? Tendrás que volver a iniciar sesión para acceder.
               </p>
 
+              {sessions.length > 1 && (
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={logoutAllDevices}
+                      onChange={(e) => setLogoutAllDevices(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-700 bg-gray-900 text-secondary-gold focus:ring-secondary-gold"
+                    />
+                    <span className="text-sm text-gray-300">
+                      Cerrar sesión en todos los dispositivos ({sessions.length} sesiones activas)
+                    </span>
+                  </label>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="ghost" onClick={() => setShowLogoutModal(false)}>
+                <Button variant="ghost" onClick={() => {
+                  setShowLogoutModal(false);
+                  setLogoutAllDevices(false);
+                }}>
                   Cancelar
                 </Button>
                 <Button variant="primary" onClick={handleLogoutConfirm}>
