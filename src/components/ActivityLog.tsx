@@ -4,6 +4,7 @@ import { Card } from './Card';
 import { Button } from './Button';
 import { LogIn, LogOut, Shield, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { GetActivityLogsParams } from '../services/auth.service';
 
 export function ActivityLog() {
   const { activityLogs, loadingActivityLogs, fetchActivityLogs } = useAuth();
@@ -13,12 +14,12 @@ export function ActivityLog() {
   const limit = 20;
 
   const loadLogs = useCallback(async () => {
-    const params: any = {
+    const params: GetActivityLogsParams = {
       limit,
       offset
     };
     if (eventTypeFilter !== 'all') {
-      params.eventType = eventTypeFilter;
+      params.eventType = eventTypeFilter as 'login' | 'logout' | 'session_revoked' | 'login_failed';
     }
     const result = await fetchActivityLogs(params);
     if (result) {
@@ -90,10 +91,14 @@ export function ActivityLog() {
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-white">Historial de Actividad</h4>
         <div className="flex gap-2">
+          <label htmlFor="event-type-filter" className="sr-only">
+            Filtro de evento
+          </label>
           <select
+            id="event-type-filter"
             value={eventTypeFilter}
             onChange={(e) => {
-              setEventTypeFilter(e.target.value as any);
+              setEventTypeFilter(e.target.value as 'login' | 'logout' | 'session_revoked' | 'login_failed' | 'all');
               setOffset(0);
             }}
             className="bg-gray-950 border border-gray-800 rounded-[8px] px-3 py-1.5 text-sm text-white focus:outline-none focus:border-secondary-gold"
@@ -168,7 +173,7 @@ export function ActivityLog() {
                 variant="ghost"
                 onClick={() => setOffset(Math.max(0, offset - limit))}
                 disabled={offset === 0}
-                className="text-sm px-3 py-1.5"
+                className="text-sm px-3 py-1.5 min-h-[44px] min-w-[44px]"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Anterior
@@ -180,7 +185,7 @@ export function ActivityLog() {
                 variant="ghost"
                 onClick={() => setOffset(offset + limit)}
                 disabled={offset + limit >= total}
-                className="text-sm px-3 py-1.5"
+                className="text-sm px-3 py-1.5 min-h-[44px] min-w-[44px]"
               >
                 Siguiente
                 <ChevronRight className="w-4 h-4" />
