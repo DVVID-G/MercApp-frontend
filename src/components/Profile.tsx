@@ -23,7 +23,7 @@ const COLORS = ['#d4af37', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#3498db'
 export function Profile({ onLogout, onOpenCart }: ProfileProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [logoutAllDevices, setLogoutAllDevices] = useState(false);
-  const { sessions } = useAuth();
+  const { sessions, logout } = useAuth();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [stats, setStats] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,15 +56,16 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
 
   const handleLogoutConfirm = async () => {
     setShowLogoutModal(false);
-    // onLogout now supports logoutAllDevices parameter
-    // We'll pass it through a callback or update the interface
-    setTimeout(() => {
+    setTimeout(async () => {
       if (logoutAllDevices) {
         // Call logout with all flag - this will be handled by AuthContext
-        onLogout();
+        await logout(undefined, true);
       } else {
-        onLogout();
+        // Call regular logout (current session only)
+        await logout();
       }
+      // Call onLogout callback to update parent component state
+      onLogout();
     }, 300);
   };
 
