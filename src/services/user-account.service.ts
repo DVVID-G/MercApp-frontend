@@ -1,4 +1,5 @@
 import { api } from './api';
+import { User } from '../types/user';
 
 export interface UpdateAccountInput {
   name?: string;
@@ -8,12 +9,6 @@ export interface UpdateAccountInput {
 export interface ChangePasswordInput {
   currentPassword: string;
   newPassword: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
 }
 
 /**
