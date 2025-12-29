@@ -198,7 +198,7 @@ export default function App() {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <SettingsProvider>
         <PurchaseProvider>
-          <div className="min-h-screen bg-primary-black text-white max-w-[390px] mx-auto relative">
+          <main className="min-h-screen bg-primary-black text-white max-w-[390px] mx-auto relative">
             {renderScreen()}
             {isAuthenticated && currentScreen !== 'settings' && (
               <BottomNav 
@@ -206,7 +206,7 @@ export default function App() {
                 onNavigate={handleNavigate}
               />
             )}
-          </div>
+          </main>
         </PurchaseProvider>
       </SettingsProvider>
     </ThemeProvider>
