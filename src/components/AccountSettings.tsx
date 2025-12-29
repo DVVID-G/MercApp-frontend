@@ -9,11 +9,12 @@ import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'motion/react';
 import { Eye, EyeOff, Save, Lock } from 'lucide-react';
+import { UpdateAccountInput } from '../services/user-account.service';
 
 const updateAccountSchema = z.object({
-  name: z.string().min(1, 'El nombre es obligatorio').optional().or(z.literal('')),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
-}).refine((data) => data.name !== undefined || data.email !== undefined, {
+  name: z.string().min(1, 'El nombre es obligatorio').optional(),
+  email: z.string().email('Email inválido').optional(),
+}).refine((data) => (data.name?.trim() ?? '') !== '' || (data.email?.trim() ?? '') !== '', {
   message: 'Debe proporcionar al menos un campo para actualizar',
 });
 
@@ -68,7 +69,7 @@ export function AccountSettings() {
 
   const onAccountSubmit = async (data: UpdateAccountFormData) => {
     try {
-      const updates: any = {};
+      const updates: UpdateAccountInput = {};
       if (data.name && data.name.trim() !== user?.name) {
         updates.name = data.name.trim();
       }
