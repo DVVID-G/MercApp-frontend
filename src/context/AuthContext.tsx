@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api, setAuthToken } from '../services/api';
 import * as authService from '../services/auth.service';
 import { Session, ActivityLog } from '../services/auth.service';

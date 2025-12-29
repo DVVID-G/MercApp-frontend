@@ -12,11 +12,7 @@ export function ActivityLog() {
   const [total, setTotal] = useState(0);
   const limit = 20;
 
-  useEffect(() => {
-    loadLogs();
-  }, [eventTypeFilter, offset]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     const params: any = {
       limit,
       offset
@@ -24,11 +20,15 @@ export function ActivityLog() {
     if (eventTypeFilter !== 'all') {
       params.eventType = eventTypeFilter;
     }
-    const data = await fetchActivityLogs(params);
-    if (data) {
-      setTotal(data.total);
+    const result = await fetchActivityLogs(params);
+    if (result) {
+      setTotal(result.total);
     }
-  };
+  }, [eventTypeFilter, offset, fetchActivityLogs]);
+
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
 
   const getEventIcon = (eventType: string) => {
     switch (eventType) {
