@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (!accessToken) return;
     setLoadingSessions(true);
     try {
@@ -176,9 +176,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoadingSessions(false);
     }
-  };
+  }, [accessToken]);
 
-  const fetchActivityLogs = async (params?: authService.GetActivityLogsParams): Promise<{
+  const fetchActivityLogs = useCallback(async (params?: authService.GetActivityLogsParams): Promise<{
     logs: ActivityLog[];
     total: number;
     limit: number;
@@ -196,7 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoadingActivityLogs(false);
     }
-  };
+  }, [accessToken]);
 
   const handleRevokeSession = async (sessionId: string) => {
     try {
