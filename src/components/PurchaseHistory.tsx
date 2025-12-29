@@ -13,6 +13,7 @@ import { FilterErrorBoundary } from './filters/FilterErrorBoundary';
 import { useFilteredPurchases } from '../hooks/usePurchaseFilter';
 import { parseURLParams, serializeToURL } from '../utils/filterPersistence';
 import { CartButton } from './CartButton';
+import { formatCOP } from '../utils/currency';
 
 interface PurchaseHistoryProps {
   purchases: Purchase[];
@@ -129,7 +130,7 @@ function InnerPurchaseHistory({ purchases, onViewDetail, onOpenCart, showFilters
             <div className="flex items-center justify-between">
               <div>
                 <small className="text-gray-400 block mb-1">Total acumulado</small>
-                <h2 className="text-secondary-gold">${totalSpent.toFixed(2)}</h2>
+                <h2 className="text-secondary-gold">{formatCOP(totalSpent)}</h2>
               </div>
               <div className="text-right">
                 <small className="text-gray-400 block mb-1">Compras totales</small>
@@ -288,7 +289,7 @@ function InnerPurchaseHistory({ purchases, onViewDetail, onOpenCart, showFilters
                           </div>
                           
                           <div className="text-right flex-shrink-0">
-                            <p className="text-secondary-gold text-xl whitespace-nowrap">${purchase.total.toFixed(2)}</p>
+                            <p className="text-secondary-gold text-xl whitespace-nowrap">{formatCOP(purchase.total)}</p>
                           </div>
                         </div>
                       </Card>

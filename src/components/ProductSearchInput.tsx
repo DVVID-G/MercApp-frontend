@@ -10,6 +10,7 @@ import { ProductFilterSummary } from './filters/ProductFilterSummary';
 import { generateFilterTags } from '../utils/productFilterTags';
 import { getActiveFilterCount } from '../types/productFilters';
 import { CatalogProduct, isProductRegular } from '../types/product';
+import { formatCOP, formatPUM } from '../utils/currency';
 
 export type SearchMode = 'barcode' | 'name';
 
@@ -417,12 +418,12 @@ function ProductSearchInputInner({
                         <>
                           {/* Main Price - High Contrast */}
                           <div className="font-bold text-secondary-gold text-lg leading-tight whitespace-nowrap mb-1">
-                            ${product.price.toFixed(2)}
+                            {formatCOP(product.price)}
                           </div>
                           {/* PUM - Better Contrast */}
                           {product.pum && (
                             <div className="text-xs text-gray-300 whitespace-nowrap font-medium">
-                              ${product.pum.toFixed(2)}/{product.umd}
+                              {formatPUM(product.pum, product.umd)}
                             </div>
                           )}
                         </>
@@ -430,12 +431,12 @@ function ProductSearchInputInner({
                         <>
                           {/* Reference Price - High Contrast */}
                           <div className="font-bold text-secondary-gold text-lg leading-tight whitespace-nowrap mb-1">
-                            ${product.referencePrice.toFixed(2)}
+                            {formatCOP(product.referencePrice)}
                           </div>
                           {/* PUM - Better Contrast */}
                           {product.pum && (
                             <div className="text-xs text-gray-300 whitespace-nowrap font-medium">
-                              ${product.pum.toFixed(2)}/g
+                              {formatPUM(product.pum, 'g')}
                             </div>
                           )}
                         </>

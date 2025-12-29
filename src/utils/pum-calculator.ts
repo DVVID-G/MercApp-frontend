@@ -100,3 +100,4 @@ export function isValidWeight(grams: number): boolean {
   return Number.isFinite(grams) && grams > 0 && grams <= 100_000; // Máximo 100kg
 }
 
+

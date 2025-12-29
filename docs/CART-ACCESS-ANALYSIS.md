@@ -190,3 +190,4 @@ Botón flotante circular fijo en la esquina inferior derecha, con badge numéric
 - Mostrar confirmación antes de descartar compra
 - Sincronizar con `CreatePurchase` component
 
+

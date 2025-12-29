@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { FilterSummaryTag, ProductFilterState, DATE_PRESETS } from '../types/productFilters';
+import { formatCOP } from './currency';
 
 export function generateFilterTags(
   filters: ProductFilterState,
@@ -34,10 +35,10 @@ export function generateFilterTags(
   // Price tag
   if (filters.priceRange.min !== null || filters.priceRange.max !== null) {
     const minStr = filters.priceRange.min !== null 
-      ? `$${filters.priceRange.min.toFixed(2)}`
+      ? formatCOP(filters.priceRange.min)
       : '...';
     const maxStr = filters.priceRange.max !== null 
-      ? `$${filters.priceRange.max.toFixed(2)}`
+      ? formatCOP(filters.priceRange.max)
       : '...';
     tags.push({
       type: 'price',
@@ -68,5 +69,6 @@ export function generateFilterTags(
   
   return tags;
 }
+
 
 

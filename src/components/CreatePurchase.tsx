@@ -23,6 +23,7 @@ import { BarcodeScanner } from './BarcodeScanner';
 import { SuccessModal } from './SuccessModal';
 import { AddToCartCard } from './purchase/AddToCartCard';
 import { usePurchase } from '../context/PurchaseContext';
+import { formatCOP, formatPUM } from '../utils/currency';
 
 interface CreatePurchaseProps {
   onSave: (purchase: Purchase) => void;
@@ -194,7 +195,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
         : 0;
       
       toast.success(`✨ Producto creado: ${createdProduct.name}`, {
-        description: `${createdProduct.marca} • $${displayPrice.toFixed(2)}`
+        description: `${createdProduct.marca} • ${formatCOP(displayPrice)}`
       });
     } catch (err: any) {
       console.error('Error creating product:', err);
@@ -300,7 +301,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
     const totalPrice = unitPrice * quantity;
 
     toast.success(`✅ ${newProduct.name} agregado a tu compra`, {
-      description: `Cantidad: ${quantity}${pendingProduct.productType === 'fruver' ? 'g' : ''} • Total: $${totalPrice.toFixed(2)}`
+      description: `Cantidad: ${quantity}${pendingProduct.productType === 'fruver' ? 'g' : ''} • Total: ${formatCOP(totalPrice)}`
     });
   };
 
@@ -372,7 +373,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
       };
 
       toast.success(`🎉 Compra guardada exitosamente`, {
-        description: `${products.length} productos • Total: $${purchase.total.toFixed(2)}`
+        description: `${products.length} productos • Total: ${formatCOP(purchase.total)}`
       });
       
       // Clear draft purchase from context
@@ -500,7 +501,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
       setProducts([...products, newProduct]);
       addProduct(newProduct); // Sync with context
       toast.success(`💾 Precio actualizado en catálogo`, {
-        description: `${product.name} • $${newPrice.toFixed(2)}`
+        description: `${product.name} • ${formatCOP(newPrice)}`
       });
       setPriceModalOpen(false);
       setPriceModalData(null);
@@ -650,11 +651,11 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
                               x{product.quantity}
                             </span>
                             <span className="text-secondary-gold">
-                              ${(product.price * product.quantity).toFixed(2)}
+                              {formatCOP(product.price * product.quantity)}
                             </span>
                             {product.pum && product.umd && (
                               <span className="px-2 py-1 bg-primary-gold/10 rounded-[6px] text-xs text-primary-gold">
-                                ${product.pum.toFixed(2)}/{product.umd}
+                                {formatPUM(product.pum, product.umd)}
                               </span>
                             )}
                           </div>
@@ -693,7 +694,7 @@ export function CreatePurchase({ onSave, onCancel, autoStartScanner = false }: C
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 mb-1">Total de la compra</p>
-                  <h2 className="text-secondary-gold">${total.toFixed(2)}</h2>
+                  <h2 className="text-secondary-gold">{formatCOP(total)}</h2>
                 </div>
               </div>
             </Card>

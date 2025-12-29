@@ -8,6 +8,7 @@ import { getAnalyticsOverview, AnalyticsOverview } from '../services/analytics.s
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { CartButton } from './CartButton';
+import { formatCOP } from '../utils/currency';
 
 interface ProfileProps {
   onLogout: () => void;
@@ -127,7 +128,7 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
                <>
                 <Card className="text-center p-3">
                   <p className="text-xl text-secondary-gold mb-1">
-                    ${stats?.monthly[stats.monthly.length - 1]?.total.toLocaleString() || '0'}
+                    {stats?.monthly[stats.monthly.length - 1]?.total ? formatCOP(stats.monthly[stats.monthly.length - 1].total) : formatCOP(0)}
                   </p>
                   <small className="text-gray-400 text-xs">Gasto este mes</small>
                 </Card>
@@ -165,7 +166,7 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
               </Card>
               <Card className="p-3">
                 <small className="text-gray-400 text-xs block mb-1">Proyección Fin de Mes</small>
-                <p className="text-lg font-bold text-white">${stats.spendingProjection.toLocaleString()}</p>
+                <p className="text-lg font-bold text-white">{formatCOP(stats.spendingProjection)}</p>
               </Card>
             </div>
 
@@ -188,6 +189,7 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
                       itemStyle={{ color: '#fff' }}
+                      formatter={(value: number) => formatCOP(value)}
                     />
                     <Bar dataKey="total" fill="#d4af37" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -217,6 +219,7 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
                       itemStyle={{ color: '#fff' }}
+                      formatter={(value: number) => formatCOP(value)}
                     />
                   </PieChart>
                 </ResponsiveContainer>

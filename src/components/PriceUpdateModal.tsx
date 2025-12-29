@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { formatCOP } from '../utils/currency';
 
 export interface PriceUpdateModalProps {
   isOpen: boolean;
@@ -90,13 +91,13 @@ export function PriceUpdateModal({
                   <div>
                     <div className="text-xs text-gray-500 mb-1">Precio en Catálogo</div>
                     <div className="text-2xl font-bold text-gray-700">
-                      ${catalogPrice.toFixed(2)}
+                      {formatCOP(catalogPrice)}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500 mb-1">Precio Nuevo</div>
                     <div className="text-2xl font-bold text-secondary-gold">
-                      ${newPrice.toFixed(2)}
+                      {formatCOP(newPrice)}
                     </div>
                   </div>
                 </div>
@@ -110,7 +111,7 @@ export function PriceUpdateModal({
                         : 'bg-green-100 text-green-800'
                     }`}
                   >
-                    {isIncrease ? '↑' : '↓'} {Math.abs(priceDiff).toFixed(2)} ({percentChange}%)
+                    {isIncrease ? '↑' : '↓'} {formatCOP(Math.abs(priceDiff))} ({percentChange}%)
                   </span>
                 </div>
               </div>
@@ -128,7 +129,7 @@ export function PriceUpdateModal({
                     <div>
                       <div className="font-medium">Usar Precio del Catálogo</div>
                       <div className="text-sm text-gray-600">
-                        Mantener ${catalogPrice.toFixed(2)}
+                        Mantener {formatCOP(catalogPrice)}
                       </div>
                     </div>
                     <div className="text-2xl">📋</div>
@@ -146,7 +147,7 @@ export function PriceUpdateModal({
                     <div>
                       <div className="font-medium">Actualizar Catálogo</div>
                       <div className="text-sm text-yellow-100">
-                        Guardar ${newPrice.toFixed(2)} como nuevo precio
+                        Guardar {formatCOP(newPrice)} como nuevo precio
                       </div>
                     </div>
                     <div className="text-2xl">💾</div>
@@ -164,7 +165,7 @@ export function PriceUpdateModal({
                     <div>
                       <div className="font-medium text-sm sm:text-base">Usar Solo Esta Vez</div>
                       <div className="text-xs sm:text-sm text-blue-700">
-                        ${newPrice.toFixed(2)} sin actualizar catálogo
+                        {formatCOP(newPrice)} sin actualizar catálogo
                       </div>
                     </div>
                     <div className="text-2xl flex-shrink-0">🔄</div>
