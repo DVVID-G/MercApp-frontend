@@ -4,7 +4,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { manualProductSchema, ManualProductFormData } from '../validators/forms';
 import { Input } from './Input';
+import { CurrencyInput } from './ui/currency-input';
 import { Barcode, Scale } from 'lucide-react';
+import { formatCOP } from '../utils/currency';
 
 export interface ManualProductFormProps {
   onSubmit: (data: ManualProductFormData & { productType: 'regular' | 'fruver' }) => void;
@@ -475,9 +477,9 @@ export function ManualProductForm({
   const packageSize = watch('packageSize');
   const umd = watch('umd');
 
-  const calculatedPUM = price > 0 && packageSize > 0
-    ? (price / packageSize).toFixed(2)
-    : '0.00';
+  const calculatedPUMValue = price > 0 && packageSize > 0
+    ? price / packageSize
+    : 0;
 
   return (
     <motion.div
@@ -579,14 +581,20 @@ export function ManualProductForm({
         {/* Price and Package Size Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Price / Precio de Referencia */}
-          <Input
-            label={productType === 'fruver' ? 'Precio de Referencia *' : 'Precio *'}
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            error={errors.price?.message}
-            disabled={isLoading}
-            {...register('price', { valueAsNumber: true })}
+          <Controller
+            name="price"
+            control={control}
+            render={({ field }) => (
+              <CurrencyInput
+                value={field.value || 0}
+                onChange={(value) => field.onChange(value)}
+                label={productType === 'fruver' ? 'Precio de Referencia' : 'Precio'}
+                placeholder="$0"
+                error={errors.price?.message}
+                required
+                disabled={isLoading}
+              />
+            )}
           />
 
           {/* Package Size / Peso de Referencia */}
@@ -630,7 +638,7 @@ export function ManualProductForm({
                 📊 PUM (Precio por {umd})
               </span>
               <span className="text-lg font-bold text-secondary-gold">
-                ${calculatedPUM}
+                {formatCOP(calculatedPUMValue)}
               </span>
             </div>
           </div>

@@ -2,6 +2,7 @@ import { ArrowLeft, Calendar, Package, Tag } from 'lucide-react';
 import { Card } from './Card';
 import { Purchase } from '../App';
 import { motion } from 'motion/react';
+import { formatCOP, formatPUM } from '../utils/currency';
 
 interface PurchaseDetailProps {
   purchase: Purchase | null;
@@ -55,7 +56,7 @@ export function PurchaseDetail({ purchase, onBack }: PurchaseDetailProps) {
           <Card className="bg-gradient-to-br from-secondary-gold/10 to-secondary-gold/5 border-secondary-gold/30">
             <div className="text-center">
               <small className="text-gray-400 block mb-2">Total de la compra</small>
-              <h1 className="text-secondary-gold mb-3">${purchase.total.toFixed(2)}</h1>
+              <h1 className="text-secondary-gold mb-3">{formatCOP(purchase.total)}</h1>
               <div className="flex items-center justify-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Package className="w-4 h-4 text-gray-400" />
@@ -98,7 +99,7 @@ export function PurchaseDetail({ purchase, onBack }: PurchaseDetailProps) {
                   <div className="w-10 h-10 bg-secondary-gold/10 rounded-[10px] flex items-center justify-center mx-auto mb-2">
                     <Tag className="w-5 h-5 text-secondary-gold" />
                   </div>
-                  <p className="text-white mb-1">${data.total.toFixed(2)}</p>
+                  <p className="text-white mb-1">{formatCOP(data.total)}</p>
                   <small className="text-gray-400">{category}</small>
                   <div className="mt-1">
                     <span className="px-2 py-0.5 bg-gray-800 rounded-[4px] text-xs text-gray-400">
@@ -142,12 +143,12 @@ export function PurchaseDetail({ purchase, onBack }: PurchaseDetailProps) {
                             x{product.quantity}
                           </span>
                           <span className="text-gray-400 text-sm">
-                            ${product.price.toFixed(2)} c/u
+                            {formatCOP(product.price)} c/u
                           </span>
                         </div>
                         {product.pum && product.umd && (
                           <span className="px-2 py-1 bg-primary-gold/10 rounded-[6px] text-xs text-primary-gold">
-                            ${product.pum.toFixed(2)}/{product.umd}
+                            {formatPUM(product.pum, product.umd)}
                           </span>
                         )}
                       </div>
@@ -155,7 +156,7 @@ export function PurchaseDetail({ purchase, onBack }: PurchaseDetailProps) {
                     
                     <div className="text-right">
                       <p className="text-secondary-gold text-xl">
-                        ${(product.price * product.quantity).toFixed(2)}
+                        {formatCOP(product.price * product.quantity)}
                       </p>
                     </div>
                   </div>
@@ -177,7 +178,7 @@ export function PurchaseDetail({ purchase, onBack }: PurchaseDetailProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">Subtotal</span>
-                <span className="text-white">${purchase.total.toFixed(2)}</span>
+                <span className="text-white">{formatCOP(purchase.total)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">Productos únicos</span>
@@ -190,7 +191,7 @@ export function PurchaseDetail({ purchase, onBack }: PurchaseDetailProps) {
               <div className="h-px bg-gray-800 my-2" />
               <div className="flex items-center justify-between">
                 <span className="text-white">Total</span>
-                <span className="text-secondary-gold text-xl">${purchase.total.toFixed(2)}</span>
+                <span className="text-secondary-gold text-xl">{formatCOP(purchase.total)}</span>
               </div>
             </div>
           </Card>

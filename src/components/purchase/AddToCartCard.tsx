@@ -5,6 +5,7 @@ import { Button } from '../Button';
 import { QuantitySelector } from './QuantitySelector';
 import type { CatalogProduct } from '../../types/product';
 import { isProductRegular, isProductFruver } from '../../types/product';
+import { formatCOP, formatPUM } from '../../utils/currency';
 
 export interface AddToCartCardProps {
   product: CatalogProduct;
@@ -119,28 +120,28 @@ export function AddToCartCard({
                 {isProductFruver(product) && product.pum ? (
                   <>
                     <span className="text-2xl font-bold text-secondary-gold">
-                      ${product.pum.toFixed(2)}/g
+                      {formatPUM(product.pum, 'g')}
                     </span>
                     {product.referencePrice && (
                       <span className="text-xs text-gray-500">
-                        (Referencia: ${product.referencePrice.toFixed(2)})
+                        (Referencia: {formatCOP(product.referencePrice)})
                       </span>
                     )}
                   </>
                 ) : isProductRegular(product) ? (
                   <>
                     <span className="text-2xl font-bold text-secondary-gold">
-                      ${product.price.toFixed(2)}
+                      {formatCOP(product.price)}
                     </span>
                     {product.pum && (
                       <span className="text-xs text-gray-500">
-                        ${product.pum.toFixed(2)}/{product.umd}
+                        {formatPUM(product.pum, product.umd)}
                       </span>
                     )}
                   </>
                 ) : (
                   <span className="text-2xl font-bold text-secondary-gold">
-                    $0.00
+                    {formatCOP(0)}
                   </span>
                 )}
               </div>
@@ -166,12 +167,12 @@ export function AddToCartCard({
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-400">Total</span>
                 <span className="text-3xl font-bold text-secondary-gold">
-                  ${total.toFixed(2)}
+                  {formatCOP(total)}
                 </span>
               </div>
               {isProductFruver(product) && product.pum && (
                 <p className="text-xs text-gray-500 mt-2">
-                  ${product.pum.toFixed(2)}/g × {quantity}g = ${total.toFixed(2)}
+                  {formatPUM(product.pum, 'g')} × {quantity}g = {formatCOP(total)}
                 </p>
               )}
             </div>

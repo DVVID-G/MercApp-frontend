@@ -8,6 +8,7 @@ import { generateFilterTags } from '../utils/productFilterTags';
 import { getActiveFilterCount } from '../types/productFilters';
 import { listProducts, CatalogProduct } from '../services/product.service';
 import { Card } from './Card';
+import { formatCOP } from '../utils/currency';
 
 /**
  * Example component demonstrating product filtering integration
@@ -99,7 +100,7 @@ function ProductCatalogInner() {
                     <small className="text-gray-400">{product.categoria}</small>
                     <div className="mt-2">
                       <span className="text-secondary-gold font-semibold">
-                        ${product.price.toFixed(2)}
+                        {formatCOP(product.price)}
                       </span>
                     </div>
                   </div>

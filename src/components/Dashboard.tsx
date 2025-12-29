@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { motion } from 'motion/react';
 import { Purchase } from '../App';
 import { CartButton } from './CartButton';
+import { formatCOP } from '../utils/currency';
 
 interface DashboardProps {
   purchases: Purchase[];
@@ -65,7 +66,7 @@ export function Dashboard({ purchases, onCreatePurchase, onViewDetail, onOpenCar
               <div className="w-10 h-10 bg-secondary-gold/10 rounded-[10px] flex items-center justify-center mx-auto mb-2">
                 <DollarSign className="w-5 h-5 text-secondary-gold" />
               </div>
-              <p className="text-2xl text-secondary-gold mb-1">${totalSpent.toFixed(2)}</p>
+              <p className="text-2xl text-secondary-gold mb-1">{formatCOP(totalSpent)}</p>
               <small className="text-gray-400">Total gastado</small>
             </Card>
           </motion.div>
@@ -107,7 +108,7 @@ export function Dashboard({ purchases, onCreatePurchase, onViewDetail, onOpenCar
               <div className="w-10 h-10 bg-purple-500/10 rounded-[10px] flex items-center justify-center mx-auto mb-2">
                 <DollarSign className="w-5 h-5 text-purple-500" />
               </div>
-              <p className="text-2xl text-white mb-1">${avgPurchase.toFixed(2)}</p>
+              <p className="text-2xl text-white mb-1">{formatCOP(avgPurchase)}</p>
               <small className="text-gray-400">Promedio</small>
             </Card>
           </motion.div>
@@ -190,7 +191,7 @@ export function Dashboard({ purchases, onCreatePurchase, onViewDetail, onOpenCar
                       
                       <div className="text-right flex-shrink-0">
                         <p className="text-secondary-gold text-xl whitespace-nowrap">
-                          ${purchase.total.toFixed(2)}
+                          {formatCOP(purchase.total)}
                         </p>
                       </div>
                     </div>
