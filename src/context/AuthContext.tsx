@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api, setAuthToken } from '../services/api';
 import * as authService from '../services/auth.service';
-import { Session, ActivityLog, User, getMeRequest } from '../services/auth.service';
+import { Session, ActivityLog, getMeRequest } from '../services/auth.service';
+import { User } from '../types/user';
 
 type AuthState = {
   user: User | null;

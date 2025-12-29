@@ -1,13 +1,5 @@
 import { api } from './api';
-
-export interface User {
-  id?: string;
-  name: string;
-  email: string;
-  roles?: string[];
-  createdAt?: string;
-  updatedAt?: string;
-}
+import { User } from '../types/user';
 
 type LoginResponse = {
   accessToken: string;
