@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { CartButton } from './CartButton';
 import { formatCOP } from '../utils/currency';
+import { SessionList } from './SessionList';
+import { ActivityLog } from './ActivityLog';
 
 interface ProfileProps {
   onLogout: () => void;
@@ -236,11 +238,31 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
           </motion.div>
         )}
 
-        {/* Menu Items */}
+        {/* Session Management */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
+          className="mb-6"
+        >
+          <SessionList />
+        </motion.div>
+
+        {/* Activity Log */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="mb-6"
+        >
+          <ActivityLog />
+        </motion.div>
+
+        {/* Menu Items */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
           className="mb-6"
         >
           <h3 className="mb-3">Opciones</h3>
