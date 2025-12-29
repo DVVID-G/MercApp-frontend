@@ -6,10 +6,13 @@ import { CreatePurchase } from './components/CreatePurchase';
 import { PurchaseHistory } from './components/PurchaseHistory';
 import { PurchaseDetail } from './components/PurchaseDetail';
 import { Profile } from './components/Profile';
+import { Settings } from './components/Settings';
 import { BottomNav } from './components/BottomNav';
 import { useAuth } from './context/AuthContext';
 import { PurchaseProvider } from './context/PurchaseContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { getPurchases } from './services/purchases.service';
+import { ThemeProvider } from 'next-themes';
 
 export type Screen = 
   | 'login' 
@@ -18,7 +21,8 @@ export type Screen =
   | 'create-purchase' 
   | 'history' 
   | 'purchase-detail'
-  | 'profile';
+  | 'profile'
+  | 'settings';
 
 export interface Product {
   id: string;
@@ -176,6 +180,13 @@ export default function App() {
           <Profile 
             onLogout={handleLogout}
             onOpenCart={() => setCurrentScreen('create-purchase')}
+            onNavigateToSettings={() => setCurrentScreen('settings')}
+          />
+        );
+      case 'settings':
+        return (
+          <Settings 
+            onBack={() => setCurrentScreen('profile')}
           />
         );
       default:
@@ -184,16 +195,20 @@ export default function App() {
   };
 
   return (
-    <PurchaseProvider>
-      <div className="min-h-screen bg-primary-black text-white max-w-[390px] mx-auto relative">
-        {renderScreen()}
-        {isAuthenticated && (
-          <BottomNav 
-            currentScreen={currentScreen} 
-            onNavigate={handleNavigate}
-          />
-        )}
-      </div>
-    </PurchaseProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <SettingsProvider>
+        <PurchaseProvider>
+          <main className="min-h-screen bg-primary-black text-white max-w-[390px] mx-auto relative">
+            {renderScreen()}
+            {isAuthenticated && currentScreen !== 'settings' && (
+              <BottomNav 
+                currentScreen={currentScreen} 
+                onNavigate={handleNavigate}
+              />
+            )}
+          </main>
+        </PurchaseProvider>
+      </SettingsProvider>
+    </ThemeProvider>
   );
 }

@@ -590,9 +590,9 @@ export function ManualProductForm({
                 onChange={(value) => field.onChange(value)}
                 label={productType === 'fruver' ? 'Precio de Referencia' : 'Precio'}
                 placeholder="$0"
-                error={errors.price?.message}
+            error={errors.price?.message}
                 required
-                disabled={isLoading}
+            disabled={isLoading}
               />
             )}
           />

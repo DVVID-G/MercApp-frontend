@@ -9,16 +9,22 @@ import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { CartButton } from './CartButton';
 import { formatCOP } from '../utils/currency';
+import { SessionList } from './SessionList';
+import { ActivityLog } from './ActivityLog';
+import { useAuth } from '../context/AuthContext';
 
 interface ProfileProps {
   onLogout: () => void;
   onOpenCart: () => void;
+  onNavigateToSettings?: () => void;
 }
 
 const COLORS = ['#d4af37', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#3498db'];
 
-export function Profile({ onLogout, onOpenCart }: ProfileProps) {
+export function Profile({ onLogout, onOpenCart, onNavigateToSettings }: ProfileProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutAllDevices, setLogoutAllDevices] = useState(false);
+  const { sessions, logout } = useAuth();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [stats, setStats] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,9 +55,19 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
     { icon: HelpCircle, label: 'Ayuda y soporte', badge: null },
   ];
 
-  const handleLogoutConfirm = () => {
+  const handleLogoutConfirm = async () => {
     setShowLogoutModal(false);
-    setTimeout(() => onLogout(), 300);
+    setTimeout(async () => {
+      if (logoutAllDevices) {
+        // Call logout with all flag - this will be handled by AuthContext
+        await logout(undefined, true);
+      } else {
+        // Call regular logout (current session only)
+        await logout();
+      }
+      // Call onLogout callback to update parent component state
+      onLogout();
+    }, 300);
   };
 
   return (
@@ -236,11 +252,31 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
           </motion.div>
         )}
 
-        {/* Menu Items */}
+        {/* Session Management */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
+          className="mb-6"
+        >
+          <SessionList />
+        </motion.div>
+
+        {/* Activity Log */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="mb-6"
+        >
+          <ActivityLog />
+        </motion.div>
+
+        {/* Menu Items */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
           className="mb-6"
         >
           <h3 className="mb-3">Opciones</h3>
@@ -254,7 +290,11 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + index * 0.05 }}
                 >
-                  <Card onClick={() => {}} className="flex items-center justify-between">
+                  <Card onClick={() => {
+                    if (item.label === 'Configuración' && onNavigateToSettings) {
+                      onNavigateToSettings();
+                    }
+                  }} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gray-800 rounded-[10px] flex items-center justify-center">
                         <Icon className="w-5 h-5 text-gray-400" />
@@ -326,12 +366,31 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
               </div>
               
               <h3 className="text-center text-white mb-2">¿Cerrar sesión?</h3>
-              <p className="text-center text-gray-400 text-sm mb-6">
+              <p className="text-center text-gray-400 text-sm mb-4">
                 ¿Estás seguro que deseas cerrar tu sesión? Tendrás que volver a iniciar sesión para acceder.
               </p>
 
+              {sessions.length > 1 && (
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={logoutAllDevices}
+                      onChange={(e) => setLogoutAllDevices(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-700 bg-gray-900 text-secondary-gold focus:ring-secondary-gold"
+                    />
+                    <span className="text-sm text-gray-300">
+                      Cerrar sesión en todos los dispositivos ({sessions.length} sesiones activas)
+                    </span>
+                  </label>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="ghost" onClick={() => setShowLogoutModal(false)}>
+                <Button variant="ghost" onClick={() => {
+                  setShowLogoutModal(false);
+                  setLogoutAllDevices(false);
+                }}>
                   Cancelar
                 </Button>
                 <Button variant="primary" onClick={handleLogoutConfirm}>

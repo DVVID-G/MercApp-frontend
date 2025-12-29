@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { Package, Tag, Grid3x3, DollarSign, Weight } from 'lucide-react';
 import { Input } from '../Input';
 import { CreateProductFruverRequest } from '../../types/product';
 import { calculatePUM } from '../../utils/pum-calculator';
-import { formatCOP, formatPUM } from '../../utils/currency';
+import { formatPUM } from '../../utils/currency';
 
 export interface ProductFormFruverProps {
   onSubmit: (data: CreateProductFruverRequest) => void;
@@ -36,7 +36,6 @@ export function ProductFormFruver({ onSubmit, onCancel, isLoading = false }: Pro
     register,
     handleSubmit,
     watch,
-    control,
     formState: { errors },
   } = useForm<CreateProductFruverRequest>({
     defaultValues: {
