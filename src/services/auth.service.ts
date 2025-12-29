@@ -27,8 +27,81 @@ export async function refreshRequest(refreshToken: string) {
   };
 }
 
-export async function logoutRequest(refreshToken: string) {
-  const res = await api.post('/auth/logout', { refreshToken });
+export async function logoutRequest(refreshToken?: string, sessionId?: string, all?: boolean) {
+  const body: any = {};
+  if (all) {
+    body.all = true;
+  } else if (sessionId) {
+    body.sessionId = sessionId;
+  } else if (refreshToken) {
+    body.refreshToken = refreshToken;
+  }
+  const res = await api.post('/auth/logout', body);
+  return res.data;
+}
+
+export interface Session {
+  id: string;
+  deviceInfo: {
+    userAgent: string;
+    deviceType: 'mobile' | 'desktop' | 'tablet';
+    platform: string;
+    browser: string;
+  };
+  ipAddress: string;
+  status: 'active' | 'revoked' | 'expired';
+  createdAt: string;
+  lastActivityAt: string;
+  expiresAt: string;
+  isCurrent?: boolean;
+}
+
+export interface ActivityLog {
+  id: string;
+  eventType: 'login' | 'logout' | 'session_revoked' | 'login_failed';
+  sessionId?: string;
+  deviceInfo: {
+    userAgent: string;
+    deviceType: 'mobile' | 'desktop' | 'tablet';
+    platform: string;
+    browser: string;
+  };
+  ipAddress: string;
+  success: boolean;
+  reason?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
+export async function getSessions(): Promise<{ sessions: Session[] }> {
+  const res = await api.get('/auth/sessions');
+  return res.data;
+}
+
+export async function revokeSession(sessionId: string): Promise<void> {
+  await api.delete(`/auth/sessions/${sessionId}`);
+}
+
+export async function revokeAllSessions(): Promise<{ revokedCount: number }> {
+  const res = await api.delete('/auth/sessions');
+  return res.data;
+}
+
+export interface GetActivityLogsParams {
+  eventType?: 'login' | 'logout' | 'session_revoked' | 'login_failed';
+  limit?: number;
+  offset?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+export async function getActivityLogs(params?: GetActivityLogsParams): Promise<{
+  logs: ActivityLog[];
+  total: number;
+  limit: number;
+  offset: number;
+}> {
+  const res = await api.get('/auth/activity-logs', { params });
   return res.data;
 }
 
