@@ -128,7 +128,7 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
                <>
                 <Card className="text-center p-3">
                   <p className="text-xl text-secondary-gold mb-1">
-                    {stats?.monthly[stats.monthly.length - 1]?.total ? formatCOP(stats.monthly[stats.monthly.length - 1].total) : formatCOP(0)}
+                    {formatCOP(stats?.monthly[stats.monthly.length - 1]?.total ?? 0)}
                   </p>
                   <small className="text-gray-400 text-xs">Gasto este mes</small>
                 </Card>
