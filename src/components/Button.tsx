@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'motion/react';
 import { LucideIcon } from 'lucide-react';
 
@@ -30,6 +31,11 @@ export function Button({
     ghost: "bg-transparent text-gray-400 hover:text-white"
   };
 
+  // Check if children is an array (multiple children) or a fragment with multiple children
+  const childrenArray = React.Children.toArray(children);
+  const hasMultipleChildren = childrenArray.length > 1 || 
+    (React.isValidElement(children) && children.type === React.Fragment && React.Children.count(children.props.children) > 1);
+
   return (
     <motion.button
       type={type}
@@ -40,7 +46,7 @@ export function Button({
       className={`${baseStyles} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
     >
       {Icon && <Icon className="w-5 h-5" />}
-      <span>{children}</span>
+      {hasMultipleChildren ? children : <span>{children}</span>}
     </motion.button>
   );
 }
