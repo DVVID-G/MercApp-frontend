@@ -171,9 +171,9 @@ export function ActivityLog() {
             <div className="flex items-center justify-between">
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => setOffset(Math.max(0, offset - limit))}
                 disabled={offset === 0}
+                className="text-sm px-3 py-1.5"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Anterior
@@ -183,9 +183,9 @@ export function ActivityLog() {
               </span>
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => setOffset(offset + limit)}
                 disabled={offset + limit >= total}
+                className="text-sm px-3 py-1.5"
               >
                 Siguiente
                 <ChevronRight className="w-4 h-4" />

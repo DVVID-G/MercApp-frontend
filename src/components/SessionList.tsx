@@ -100,10 +100,9 @@ export function SessionList() {
         {sessions.length > 1 && (
           <Button
             variant="ghost"
-            size="sm"
             onClick={handleRevokeAll}
             disabled={revokingAll}
-            className="text-error hover:text-error"
+            className="text-error hover:text-error text-sm px-3 py-1.5"
           >
             <Trash2 className="w-4 h-4 mr-1" />
             Cerrar todas
@@ -150,10 +149,9 @@ export function SessionList() {
                 {!session.isCurrent && (
                   <Button
                     variant="ghost"
-                    size="sm"
                     onClick={() => handleRevokeSession(session.id)}
                     disabled={revokingSessionId === session.id}
-                    className="text-error hover:text-error"
+                    className="text-error hover:text-error text-sm px-3 py-1.5"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

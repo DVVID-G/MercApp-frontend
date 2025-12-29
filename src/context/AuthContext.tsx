@@ -15,7 +15,12 @@ type AuthState = {
   loadingSessions: boolean;
   loadingActivityLogs: boolean;
   fetchSessions: () => Promise<void>;
-  fetchActivityLogs: (params?: authService.GetActivityLogsParams) => Promise<void>;
+  fetchActivityLogs: (params?: authService.GetActivityLogsParams) => Promise<{
+    logs: ActivityLog[];
+    total: number;
+    limit: number;
+    offset: number;
+  } | null>;
   revokeSession: (sessionId: string) => Promise<void>;
   revokeAllSessions: () => Promise<void>;
 };
@@ -173,14 +178,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const fetchActivityLogs = async (params?: authService.GetActivityLogsParams) => {
-    if (!accessToken) return;
+  const fetchActivityLogs = async (params?: authService.GetActivityLogsParams): Promise<{
+    logs: ActivityLog[];
+    total: number;
+    limit: number;
+    offset: number;
+  } | null> => {
+    if (!accessToken) return null;
     setLoadingActivityLogs(true);
     try {
       const data = await authService.getActivityLogs(params);
       setActivityLogs(data.logs);
+      return data;
     } catch (error) {
       console.error('Failed to fetch activity logs', error);
+      return null;
     } finally {
       setLoadingActivityLogs(false);
     }
