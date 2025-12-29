@@ -23,7 +23,19 @@ const UMD_OPTIONS = [
   { value: 'unidad', label: 'Unidad' },
 ];
 
-// Categories are now loaded from useCategories hook
+const CATEGORIA_OPTIONS = [
+  { value: 'Fruver', label: '🥬 Fruver' },
+  { value: 'Lácteos', label: '🥛 Lácteos' },
+  { value: 'Granos', label: '🌾 Granos' },
+  { value: 'Carnes', label: '🥩 Carnes' },
+  { value: 'Panadería', label: '🥖 Panadería' },
+  { value: 'Bebidas', label: '🥤 Bebidas' },
+  { value: 'Aseo', label: '🧼 Aseo' },
+  { value: 'Higiene', label: '🧴 Higiene' },
+  { value: 'Snacks', label: '🍿 Snacks' },
+  { value: 'Condimentos', label: '🧂 Condimentos' },
+  { value: 'Otros', label: '📦 Otros' },
+];
 
 // Custom Select Component
 interface CustomSelectProps {
@@ -578,9 +590,9 @@ export function ManualProductForm({
                 onChange={(value) => field.onChange(value)}
                 label={productType === 'fruver' ? 'Precio de Referencia' : 'Precio'}
                 placeholder="$0"
-                error={errors.price?.message}
+            error={errors.price?.message}
                 required
-                disabled={isLoading}
+            disabled={isLoading}
               />
             )}
           />

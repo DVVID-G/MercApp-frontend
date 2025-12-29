@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { Package, Tag, Grid3x3, DollarSign, Weight } from 'lucide-react';
 import { Input } from '../Input';
 import { CreateProductFruverRequest } from '../../types/product';
 import { calculatePUM } from '../../utils/pum-calculator';
-import { formatCOP, formatPUM } from '../../utils/currency';
+import { formatPUM } from '../../utils/currency';
 
 export interface ProductFormFruverProps {
   onSubmit: (data: CreateProductFruverRequest) => void;
@@ -12,7 +12,19 @@ export interface ProductFormFruverProps {
   isLoading?: boolean;
 }
 
-// Categories are now loaded from useCategories hook
+const CATEGORIA_OPTIONS = [
+  { value: 'Fruver', label: '🥬 Fruver' },
+  { value: 'Lácteos', label: '🥛 Lácteos' },
+  { value: 'Granos', label: '🌾 Granos' },
+  { value: 'Carnes', label: '🥩 Carnes' },
+  { value: 'Panadería', label: '🥖 Panadería' },
+  { value: 'Bebidas', label: '🥤 Bebidas' },
+  { value: 'Aseo', label: '🧼 Aseo' },
+  { value: 'Higiene', label: '🧴 Higiene' },
+  { value: 'Snacks', label: '🍿 Snacks' },
+  { value: 'Condimentos', label: '🧂 Condimentos' },
+  { value: 'Otros', label: '📦 Otros' },
+];
 
 const UMD_OPTIONS = [
   { value: 'g', label: 'Gramos (g)' },
@@ -20,12 +32,10 @@ const UMD_OPTIONS = [
 ];
 
 export function ProductFormFruver({ onSubmit, onCancel, isLoading = false }: ProductFormFruverProps) {
-  const categoriaOptions = useCategories();
   const {
     register,
     handleSubmit,
     watch,
-    control,
     formState: { errors },
   } = useForm<CreateProductFruverRequest>({
     defaultValues: {
@@ -82,7 +92,7 @@ export function ProductFormFruver({ onSubmit, onCancel, isLoading = false }: Pro
           className="w-full bg-gray-950 border border-gray-800 rounded-[8px] px-4 py-3 text-white focus:outline-none focus:border-secondary-gold transition-colors"
           {...register('categoria', { required: 'La categoría es obligatoria' })}
         >
-          {categoriaOptions.map((opt) => (
+          {CATEGORIA_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
