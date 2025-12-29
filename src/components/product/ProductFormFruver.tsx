@@ -82,7 +82,7 @@ export function ProductFormFruver({ onSubmit, onCancel, isLoading = false }: Pro
           className="w-full bg-gray-950 border border-gray-800 rounded-[8px] px-4 py-3 text-white focus:outline-none focus:border-secondary-gold transition-colors"
           {...register('categoria', { required: 'La categoría es obligatoria' })}
         >
-          {CATEGORIA_OPTIONS.map((opt) => (
+          {categoriaOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
