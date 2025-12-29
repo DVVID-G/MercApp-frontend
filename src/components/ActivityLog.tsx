@@ -155,11 +155,6 @@ export function ActivityLog() {
                       <p className="text-gray-500 text-xs">
                         {log.ipAddress} • {formatDate(log.createdAt)}
                       </p>
-                      {log.reason && (
-                        <p className="text-gray-600 text-xs mt-1">
-                          Razón: {log.reason}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </Card>
