@@ -151,7 +151,7 @@ export function SessionList() {
                     variant="ghost"
                     onClick={() => handleRevokeSession(session.id)}
                     disabled={revokingSessionId === session.id}
-                    className="text-error hover:text-error text-sm px-3 py-1.5"
+                    className="text-error hover:text-error text-sm px-3 py-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

@@ -57,7 +57,10 @@ export function Profile({ onLogout, onOpenCart, onNavigateToSettings }: ProfileP
 
   const handleLogoutConfirm = async () => {
     setShowLogoutModal(false);
-    setTimeout(async () => {
+    try {
+      // Wait for modal close animation
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       if (logoutAllDevices) {
         // Call logout with all flag - this will be handled by AuthContext
         await logout(undefined, true);
@@ -65,9 +68,12 @@ export function Profile({ onLogout, onOpenCart, onNavigateToSettings }: ProfileP
         // Call regular logout (current session only)
         await logout();
       }
-      // Call onLogout callback to update parent component state
+      // Call onLogout callback to update parent component state only after successful logout
       onLogout();
-    }, 300);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      toast.error('Error al cerrar sesión. Por favor, inténtalo de nuevo.');
+    }
   };
 
   return (
