@@ -23,19 +23,7 @@ const UMD_OPTIONS = [
   { value: 'unidad', label: 'Unidad' },
 ];
 
-const CATEGORIA_OPTIONS = [
-  { value: 'Fruver', label: '🥬 Fruver' },
-  { value: 'Lácteos', label: '🥛 Lácteos' },
-  { value: 'Granos', label: '🌾 Granos' },
-  { value: 'Carnes', label: '🥩 Carnes' },
-  { value: 'Panadería', label: '🥖 Panadería' },
-  { value: 'Bebidas', label: '🥤 Bebidas' },
-  { value: 'Aseo', label: '🧼 Aseo' },
-  { value: 'Higiene', label: '🧴 Higiene' },
-  { value: 'Snacks', label: '🍿 Snacks' },
-  { value: 'Condimentos', label: '🧂 Condimentos' },
-  { value: 'Otros', label: '📦 Otros' },
-];
+// Categories are now loaded from useCategories hook
 
 // Custom Select Component
 interface CustomSelectProps {

@@ -16,11 +16,12 @@ import { useAuth } from '../context/AuthContext';
 interface ProfileProps {
   onLogout: () => void;
   onOpenCart: () => void;
+  onNavigateToSettings?: () => void;
 }
 
 const COLORS = ['#d4af37', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#3498db'];
 
-export function Profile({ onLogout, onOpenCart }: ProfileProps) {
+export function Profile({ onLogout, onOpenCart, onNavigateToSettings }: ProfileProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [logoutAllDevices, setLogoutAllDevices] = useState(false);
   const { sessions, logout } = useAuth();
@@ -282,6 +283,11 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
           <div className="space-y-2">
             {menuItems.map((item, index) => {
               const Icon = item.icon;
+              const handleClick = () => {
+                if (item.label === 'Configuración' && onNavigateToSettings) {
+                  onNavigateToSettings();
+                }
+              };
               return (
                 <motion.div
                   key={item.label}
@@ -289,7 +295,7 @@ export function Profile({ onLogout, onOpenCart }: ProfileProps) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + index * 0.05 }}
                 >
-                  <Card onClick={() => {}} className="flex items-center justify-between">
+                  <Card onClick={handleClick} className="flex items-center justify-between cursor-pointer hover:bg-gray-900 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gray-800 rounded-[10px] flex items-center justify-center">
                         <Icon className="w-5 h-5 text-gray-400" />

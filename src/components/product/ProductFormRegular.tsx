@@ -2,6 +2,7 @@ import { useForm } from 'react-hook-form';
 import { Package, Tag, Grid3x3, DollarSign, Box } from 'lucide-react';
 import { Input } from '../Input';
 import { CreateProductRegularRequest } from '../../types/product';
+import { useCategories } from '../../hooks/useCategories';
 
 export interface ProductFormRegularProps {
   onSubmit: (data: CreateProductRegularRequest) => void;
@@ -9,19 +10,7 @@ export interface ProductFormRegularProps {
   isLoading?: boolean;
 }
 
-const CATEGORIA_OPTIONS = [
-  { value: 'Fruver', label: '🥬 Fruver' },
-  { value: 'Lácteos', label: '🥛 Lácteos' },
-  { value: 'Granos', label: '🌾 Granos' },
-  { value: 'Carnes', label: '🥩 Carnes' },
-  { value: 'Panadería', label: '🥖 Panadería' },
-  { value: 'Bebidas', label: '🥤 Bebidas' },
-  { value: 'Aseo', label: '🧼 Aseo' },
-  { value: 'Higiene', label: '🧴 Higiene' },
-  { value: 'Snacks', label: '🍿 Snacks' },
-  { value: 'Condimentos', label: '🧂 Condimentos' },
-  { value: 'Otros', label: '📦 Otros' },
-];
+// Categories are now loaded from useCategories hook
 
 const UMD_OPTIONS = [
   { value: 'kg', label: 'Kilogramos (kg)' },
@@ -32,6 +21,7 @@ const UMD_OPTIONS = [
 ];
 
 export function ProductFormRegular({ onSubmit, onCancel, isLoading = false }: ProductFormRegularProps) {
+  const categoriaOptions = useCategories();
   const {
     register,
     handleSubmit,
@@ -88,7 +78,7 @@ export function ProductFormRegular({ onSubmit, onCancel, isLoading = false }: Pr
           className="w-full bg-gray-950 border border-gray-800 rounded-[8px] px-4 py-3 text-white focus:outline-none focus:border-secondary-gold transition-colors"
           {...register('categoria', { required: 'La categoría es obligatoria' })}
         >
-          {CATEGORIA_OPTIONS.map((opt) => (
+          {categoriaOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
