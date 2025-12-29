@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from './Button';
+import { ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
 import { Card } from './Card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Button } from './Button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { GeneralSettings } from './GeneralSettings';
-import { CategoriesSettings } from './CategoriesSettings';
 import { AccountSettings } from './AccountSettings';
 import { motion } from 'motion/react';
 
@@ -33,28 +32,27 @@ export function Settings({ onBack }: SettingsProps) {
             className="flex-1"
           >
             <h1>Configuración</h1>
-            <p className="text-gray-400">Personaliza tu experiencia</p>
+            <p className="text-gray-400">Gestiona tus preferencias y cuenta</p>
           </motion.div>
         </div>
       </div>
 
       <div className="px-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="categories">Categorías</TabsTrigger>
-            <TabsTrigger value="account">Cuenta</TabsTrigger>
+          <TabsList className="w-full mb-6 bg-gray-950">
+            <TabsTrigger value="general" className="flex-1">
+              General
+            </TabsTrigger>
+            <TabsTrigger value="account" className="flex-1">
+              Cuenta
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general" className="mt-0">
+          <TabsContent value="general">
             <GeneralSettings />
           </TabsContent>
 
-          <TabsContent value="categories" className="mt-0">
-            <CategoriesSettings />
-          </TabsContent>
-
-          <TabsContent value="account" className="mt-0">
+          <TabsContent value="account">
             <AccountSettings />
           </TabsContent>
         </Tabs>

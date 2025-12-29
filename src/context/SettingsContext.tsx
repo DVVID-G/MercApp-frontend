@@ -1,38 +1,39 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import * as userPreferencesService from '../services/user-preferences.service';
-import * as customCategoryService from '../services/custom-category.service';
-import { CustomCategory } from '../services/custom-category.service';
-import { UserPreferences } from '../services/user-preferences.service';
+import * as userAccountService from '../services/user-account.service';
 import { useAuth } from './AuthContext';
+import { getMeRequest } from '../services/auth.service';
+import { toast } from 'sonner';
 
-interface SettingsContextType {
-  preferences: UserPreferences | null;
-  customCategories: CustomCategory[];
+const STORAGE_KEY = import.meta.env.VITE_AUTH_STORAGE_KEY || 'mercapp_auth';
+
+type SettingsState = {
+  preferences: userPreferencesService.UserPreferences | null;
   loadingPreferences: boolean;
-  loadingCategories: boolean;
   fetchPreferences: () => Promise<void>;
   updatePreferences: (updates: userPreferencesService.UpdatePreferencesInput) => Promise<void>;
-  fetchCategories: () => Promise<void>;
-  createCategory: (name: string) => Promise<void>;
-  updateCategory: (id: string, updates: customCategoryService.UpdateCategoryInput) => Promise<void>;
-  deleteCategory: (id: string) => Promise<void>;
-}
+  updateAccount: (updates: userAccountService.UpdateAccountInput) => Promise<void>;
+  changePassword: (input: userAccountService.ChangePasswordInput) => Promise<void>;
+  updatingAccount: boolean;
+  changingPassword: boolean;
+};
 
-const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+const SettingsContext = createContext<SettingsState | undefined>(undefined);
 
-export function SettingsProvider({ children }: { children: React.ReactNode }) {
+export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { accessToken } = useAuth();
-  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
-  const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [preferences, setPreferences] = useState<userPreferencesService.UserPreferences | null>(null);
   const [loadingPreferences, setLoadingPreferences] = useState(false);
-  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [updatingAccount, setUpdatingAccount] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const fetchPreferences = useCallback(async () => {
     if (!accessToken) return;
+    
     setLoadingPreferences(true);
     try {
-      const data = await userPreferencesService.getPreferences();
-      setPreferences(data);
+      const prefs = await userPreferencesService.getPreferences();
+      setPreferences(prefs);
     } catch (error) {
       console.error('Failed to fetch preferences', error);
     } finally {
@@ -42,87 +43,88 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const updatePreferences = useCallback(async (updates: userPreferencesService.UpdatePreferencesInput) => {
     if (!accessToken) return;
+    
     try {
       const updated = await userPreferencesService.updatePreferences(updates);
       setPreferences(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update preferences', error);
+      toast.error('Error al actualizar preferencias');
       throw error;
     }
   }, [accessToken]);
 
-  const fetchCategories = useCallback(async () => {
+  const updateAccount = useCallback(async (updates: userAccountService.UpdateAccountInput) => {
     if (!accessToken) return;
-    setLoadingCategories(true);
+    
+    setUpdatingAccount(true);
     try {
-      const data = await customCategoryService.getCategories();
-      setCustomCategories(data.categories);
-    } catch (error) {
-      console.error('Failed to fetch categories', error);
+      await userAccountService.updateAccount(updates);
+      // Refresh user data and update localStorage
+      const updatedUser = await getMeRequest();
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          parsed.user = updatedUser;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        } catch (e) {
+          // ignore
+        }
+      }
+      toast.success('Información de cuenta actualizada');
+      // Reload page to refresh user data in AuthContext
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Failed to update account', error);
+      const message = error.response?.data?.message || 'Error al actualizar cuenta';
+      toast.error(message);
+      throw error;
     } finally {
-      setLoadingCategories(false);
+      setUpdatingAccount(false);
     }
   }, [accessToken]);
 
-  const createCategory = useCallback(async (name: string) => {
+  const changePassword = useCallback(async (input: userAccountService.ChangePasswordInput) => {
     if (!accessToken) return;
+    
+    setChangingPassword(true);
     try {
-      await customCategoryService.createCategory({ name });
-      await fetchCategories();
-    } catch (error) {
-      console.error('Failed to create category', error);
+      await userAccountService.changePassword(input);
+      toast.success('Contraseña actualizada exitosamente');
+    } catch (error: any) {
+      console.error('Failed to change password', error);
+      const message = error.response?.data?.message || 'Error al cambiar contraseña';
+      toast.error(message);
       throw error;
+    } finally {
+      setChangingPassword(false);
     }
-  }, [accessToken, fetchCategories]);
-
-  const updateCategory = useCallback(async (id: string, updates: customCategoryService.UpdateCategoryInput) => {
-    if (!accessToken) return;
-    try {
-      await customCategoryService.updateCategory(id, updates);
-      await fetchCategories();
-    } catch (error) {
-      console.error('Failed to update category', error);
-      throw error;
-    }
-  }, [accessToken, fetchCategories]);
-
-  const deleteCategory = useCallback(async (id: string) => {
-    if (!accessToken) return;
-    try {
-      await customCategoryService.deleteCategory(id);
-      await fetchCategories();
-    } catch (error) {
-      console.error('Failed to delete category', error);
-      throw error;
-    }
-  }, [accessToken, fetchCategories]);
+  }, [accessToken]);
 
   useEffect(() => {
     if (accessToken) {
       fetchPreferences();
-      fetchCategories();
     }
-  }, [accessToken, fetchPreferences, fetchCategories]);
+  }, [accessToken, fetchPreferences]);
 
   return (
     <SettingsContext.Provider
       value={{
         preferences,
-        customCategories,
         loadingPreferences,
-        loadingCategories,
         fetchPreferences,
         updatePreferences,
-        fetchCategories,
-        createCategory,
-        updateCategory,
-        deleteCategory,
+        updateAccount,
+        changePassword,
+        updatingAccount,
+        changingPassword,
       }}
     >
       {children}
     </SettingsContext.Provider>
   );
-}
+};
 
 export function useSettings() {
   const context = useContext(SettingsContext);

@@ -12,6 +12,7 @@ import { useAuth } from './context/AuthContext';
 import { PurchaseProvider } from './context/PurchaseContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { getPurchases } from './services/purchases.service';
+import { ThemeProvider } from 'next-themes';
 
 export type Screen = 
   | 'login' 
@@ -194,18 +195,20 @@ export default function App() {
   };
 
   return (
-    <SettingsProvider>
-      <PurchaseProvider>
-        <div className="min-h-screen bg-primary-black text-white max-w-[390px] mx-auto relative">
-          {renderScreen()}
-          {isAuthenticated && (
-            <BottomNav 
-              currentScreen={currentScreen} 
-              onNavigate={handleNavigate}
-            />
-          )}
-        </div>
-      </PurchaseProvider>
-    </SettingsProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <SettingsProvider>
+        <PurchaseProvider>
+          <div className="min-h-screen bg-primary-black text-white max-w-[390px] mx-auto relative">
+            {renderScreen()}
+            {isAuthenticated && currentScreen !== 'settings' && (
+              <BottomNav 
+                currentScreen={currentScreen} 
+                onNavigate={handleNavigate}
+              />
+            )}
+          </div>
+        </PurchaseProvider>
+      </SettingsProvider>
+    </ThemeProvider>
   );
 }

@@ -283,11 +283,6 @@ export function Profile({ onLogout, onOpenCart, onNavigateToSettings }: ProfileP
           <div className="space-y-2">
             {menuItems.map((item, index) => {
               const Icon = item.icon;
-              const handleClick = () => {
-                if (item.label === 'Configuración' && onNavigateToSettings) {
-                  onNavigateToSettings();
-                }
-              };
               return (
                 <motion.div
                   key={item.label}
@@ -295,7 +290,11 @@ export function Profile({ onLogout, onOpenCart, onNavigateToSettings }: ProfileP
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + index * 0.05 }}
                 >
-                  <Card onClick={handleClick} className="flex items-center justify-between cursor-pointer hover:bg-gray-900 transition-colors">
+                  <Card onClick={() => {
+                    if (item.label === 'Configuración' && onNavigateToSettings) {
+                      onNavigateToSettings();
+                    }
+                  }} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gray-800 rounded-[10px] flex items-center justify-center">
                         <Icon className="w-5 h-5 text-gray-400" />
